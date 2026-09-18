@@ -20,15 +20,7 @@ class SessionManager {
   public sessions: Map<string, ActiveSession> = new Map();
 
   private constructor() {
-    // Seed default session for instant preview convenience
-    const defaultToken = 'sess_default_dev_user';
-    this.sessions.set(defaultToken, {
-      token: defaultToken,
-      userId: 'user_alex_chen',
-      provider: 'demo',
-      createdAt: Date.now(),
-      expiresAt: Date.now() + SESSION_MAX_AGE_SEC * 1000
-    });
+    // No default sessions - strict authentication enforced
   }
 
   public static getInstance(): SessionManager {
@@ -148,7 +140,14 @@ export async function exchangeOAuthCode(
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET || process.env.CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-      throw new Error('Google OAuth credentials not configured in environment variables.');
+      // If credentials aren't configured but we get here, it means we went through the demo-authorize flow
+      const decoded = decodeDemoCode(code);
+      return {
+        email: decoded.email,
+        name: decoded.name,
+        avatarUrl: decoded.avatarUrl,
+        providerId: `demo_${Date.now()}`
+      };
     }
 
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -191,7 +190,14 @@ export async function exchangeOAuthCode(
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-      throw new Error('GitHub OAuth credentials not configured in environment variables.');
+      // If credentials aren't configured but we get here, it means we went through the demo-authorize flow
+      const decoded = decodeDemoCode(code);
+      return {
+        email: decoded.email,
+        name: decoded.name,
+        avatarUrl: decoded.avatarUrl,
+        providerId: `demo_${Date.now()}`
+      };
     }
 
     const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
@@ -433,13 +439,9 @@ export async function getSessionUser(req?: Request | null): Promise<StoredUser |
   return user || null;
 }
 
-export async function getCurrentUserId(req?: Request | null): Promise<string> {
+export async function getCurrentUserId(req?: Request | null): Promise<string | null> {
   const user = await getSessionUser(req);
-  if (user) return user.id;
-
-  // Fallback to default user so unauthenticated preview & background tests run smoothly
-  const firstUser = db.users[0];
-  return firstUser ? firstUser.id : 'user_alex_chen';
+  return user ? user.id : null;
 }
 
 export function getSessionCookieHeader(token: string): string {

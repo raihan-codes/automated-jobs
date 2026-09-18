@@ -14,6 +14,7 @@ import {
   Layers,
   Check
 } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthContext';
 
 import { useAuth } from '@/lib/firebase/AuthContext';
 
@@ -26,7 +27,13 @@ export default function ResumeStudioPage() {
   const [candidateProfile, setCandidateProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const { user } = useAuth();
+
   const fetchResumes = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     try {
       const headers = { 'x-user-id': activeUserId };
       const [res, profRes] = await Promise.all([

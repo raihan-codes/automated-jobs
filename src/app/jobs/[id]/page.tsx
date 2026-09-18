@@ -20,6 +20,7 @@ import {
   Bot,
   RefreshCw
 } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthContext';
 
 export default function JobDetailPage() {
   const params = useParams();
@@ -31,8 +32,14 @@ export default function JobDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
+  const { user } = useAuth();
+
   useEffect(() => {
     const fetchJob = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
       try {
         const res = await fetch('/api/jobs');
         const data = await res.json();
@@ -47,7 +54,7 @@ export default function JobDetailPage() {
       }
     };
     fetchJob();
-  }, [jobId]);
+  }, [jobId, user]);
 
   const handleGenerateResumeAndPrepare = async () => {
     setActionLoading(true);

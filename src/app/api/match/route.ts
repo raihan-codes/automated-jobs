@@ -1,10 +1,15 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { JobMatcher } from '@/services/ai/matcher';
+import { getCurrentUserId } from '@/lib/auth';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { jobId, userId = 'user_alex_chen' } = await request.json();
+    const sessionUserId = await getCurrentUserId(request);
+    if (!sessionUserId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    const { jobId, userId = sessionUserId } = await request.json();
 
     const job = db.jobPostings.find(j => j.id === jobId || j.sourceJobId === jobId);
     if (!job) {

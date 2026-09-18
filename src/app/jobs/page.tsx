@@ -25,6 +25,7 @@ import {
   Zap,
   Upload
 } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthContext';
 
 import { useAuth } from '@/lib/firebase/AuthContext';
 
@@ -63,7 +64,13 @@ export default function JobsExplorerPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
+  const { user } = useAuth();
+
   const fetchJobs = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const params = new URLSearchParams();

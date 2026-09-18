@@ -49,6 +49,10 @@ export default function CandidateProfilePage() {
   const [newSkillCategory, setNewSkillCategory] = useState<'TECHNICAL' | 'FRAMEWORK' | 'TOOL' | 'SOFT'>('TECHNICAL');
 
   const fetchProfileAndJobs = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     try {
       const headers = { 'x-user-id': activeUserId };
       const [profRes, jobsRes] = await Promise.all([

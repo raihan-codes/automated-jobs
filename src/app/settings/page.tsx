@@ -30,6 +30,10 @@ export default function SettingsPage() {
   const sharedCallback = oauthConfig?.callbackUrls?.shared || 'https://ais-pre-ss5pessumkhmwglkreltsp-49121961165.asia-east1.run.app/api/auth/callback';
 
   const fetchLogs = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch('/api/audit');
       const data = await res.json();
@@ -45,7 +49,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [user]);
 
   const copyToClipboard = (text: string, isShared: boolean) => {
     navigator.clipboard.writeText(text);

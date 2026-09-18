@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   RefreshCw
 } from 'lucide-react';
+import { useAuth } from '@/components/auth/AuthContext';
 
 export default function ApplicationReviewPage() {
   const params = useParams();
@@ -32,8 +33,14 @@ export default function ApplicationReviewPage() {
   // Form field modifications state
   const [formFields, setFormFields] = useState<any[]>([]);
 
+  const { user } = useAuth();
+
   useEffect(() => {
     const fetchApplication = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
       try {
         // 1. Try fetching specific application record
         const res = await fetch(`/api/applications/${appId}`);
@@ -80,7 +87,7 @@ export default function ApplicationReviewPage() {
       }
     };
     fetchApplication();
-  }, [appId]);
+  }, [appId, user]);
 
   const handleFieldChange = (key: string, value: string) => {
     setFormFields(prev =>

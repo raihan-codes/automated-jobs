@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Check, ShieldAlert, Sparkles, FileText, CheckCircle2, X } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/components/auth/AuthContext';
 
 interface NotificationItem {
   id: string;
@@ -18,8 +19,10 @@ export function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { user } = useAuth();
 
   const fetchNotifs = async () => {
+    if (!user) return;
     try {
       const res = await fetch('/api/notifications');
       const data = await res.json();
@@ -33,10 +36,11 @@ export function NotificationDropdown() {
   };
 
   useEffect(() => {
+    if (!user) return;
     fetchNotifs();
     const interval = setInterval(fetchNotifs, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
 
   const markRead = async (id: string) => {
     await fetch('/api/notifications', {

@@ -7,6 +7,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     const sessionUserId = await getCurrentUserId(request);
+    if (!sessionUserId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
     const userId = body.userId || sessionUserId;
     const { jobId } = body;
 
@@ -15,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Job not found' }, { status: 404 });
     }
 
-    const profile = db.profiles.get(userId) || db.profiles.get('user_alex_chen') || Array.from(db.profiles.values())[0];
+    const profile = db.profiles.get(userId);
     if (!profile) {
       return NextResponse.json({ success: false, error: 'Candidate profile not found' }, { status: 404 });
     }

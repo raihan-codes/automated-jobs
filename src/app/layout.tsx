@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/lib/firebase/AuthContext';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { PageTransition } from '@/components/ui/PageTransition';
 
 export const metadata: Metadata = {
   title: 'NEXUS Studio — Strategy, Design & Engineering',
