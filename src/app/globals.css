@@ -11,7 +11,10 @@
     --cursor-y: 0px;
   }
 
-  * {
+  /* Hide native cursor only on the marketing landing page, which
+     renders the custom cursor. Dashboard pages keep the native cursor. */
+  body.landing-page,
+  body.landing-page * {
     cursor: none !important;
   }
 
@@ -57,4 +60,65 @@
     -webkit-text-stroke: 1px currentColor;
     color: transparent;
   }
+
+  .perspective-1000 {
+    perspective: 1000px;
+  }
 }
+
+/* ── Workspace (dashboard) glass system ─────────────────────────────
+   Utilities used by the authenticated app pages: Sidebar, Navbar,
+   cards, modals and primary actions. */
+@layer components {
+  .glass-panel {
+    background: rgba(15, 20, 34, 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+  }
+
+  .glass-panel-interactive {
+    background: rgba(15, 20, 34, 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  .glass-panel-interactive:hover {
+    border-color: rgba(99, 102, 241, 0.45);
+    box-shadow: 0 10px 30px -12px rgba(79, 70, 229, 0.25);
+    transform: translateY(-2px);
+  }
+
+  .glass-button-primary {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    border: 1px solid rgba(99, 102, 241, 0.5);
+    box-shadow: 0 6px 18px -6px rgba(79, 70, 229, 0.45);
+    transition: all 0.25s ease;
+  }
+
+  .glass-button-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+    box-shadow: 0 10px 26px -8px rgba(99, 102, 241, 0.55);
+    transform: translateY(-1px);
+  }
+}
+
+/* ── Entry animations (tailwindcss-animate style helpers) ──────────
+   Minimal equivalents for the `animate-in fade-in zoom-in-95`
+   class combos used across the dashboard. */
+@keyframes aj-animate-in {
+  from { opacity: 0; transform: scale(var(--aj-enter-scale, 1)) translateY(var(--aj-enter-y, 0px)); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.animate-in {
+  --aj-enter-scale: 1;
+  --aj-enter-y: 0px;
+  animation: aj-animate-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.fade-in { --aj-enter-y: 6px; }
+
+.zoom-in-95 { --aj-enter-scale: 0.95; }

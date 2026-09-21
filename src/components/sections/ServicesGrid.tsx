@@ -8,12 +8,12 @@ import ScrollReveal from '../ui/ScrollReveal'
 
 export default function ServicesGrid() {
   return (
-    <section className="bg-ink-900 py-32 relative" id="services">
+    <section className="bg-ink-900 py-32 relative" id="features">
       <div className="max-w-7xl mx-auto px-6 md:px-12">
         
         <ScrollReveal delay={0.1}>
-          <p className="font-mono text-xs text-signal uppercase tracking-widest mb-4">Our Capabilities</p>
-          <h2 className="font-display text-5xl md:text-7xl font-bold mb-16 tracking-tight">Everything you need.<br/>Nothing you don't.</h2>
+          <p className="font-mono text-xs text-signal uppercase tracking-widest mb-4">Platform Capabilities</p>
+          <h2 className="font-display text-5xl md:text-7xl font-bold mb-16 tracking-tight">Your entire search.<br/>One workspace.</h2>
         </ScrollReveal>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-[minmax(280px,auto)]">

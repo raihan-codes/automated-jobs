@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Authorize AutoApply AI (${provider.toUpperCase()} OAuth)</title>
+  <title>Authorize Automated Jobs (${provider.toUpperCase()} OAuth)</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
       ${provider === 'google' ? 'Google OAuth 2.0' : provider === 'github' ? 'GitHub OAuth' : 'Fast Demo OAuth'}
     </div>
     
-    <h1>Sign in to AutoApply AI</h1>
+    <h1>Sign in to Automated Jobs</h1>
     <p class="desc">Choose your profile to authenticate and grant access to your candidate workspace.</p>
 
     ${(isSimulatedGoogle || isSimulatedGithub) ? `

@@ -26,7 +26,7 @@ export class AshbyAdapter extends BaseConnector {
       const response = await fetch(endpoint, {
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'AutoApplyAI-Discovery-Agent/1.0 (+https://autoapply.ai)'
+          'User-Agent': 'AutomatedJobs-Discovery-Agent/1.0'
         },
         signal: AbortSignal.timeout(6000)
       });

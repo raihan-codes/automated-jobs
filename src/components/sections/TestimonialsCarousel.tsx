@@ -7,11 +7,11 @@ import MagneticButton from '../ui/MagneticButton'
 
 export default function TestimonialsCarousel() {
   const testimonials = [
-    { quote: "NEXUS transformed our entire digital presence. We went from embarrassed to proud in 12 weeks.", author: "CEO", company: "Vanta Finance" },
-    { quote: "The strategy session alone was worth the entire engagement cost.", author: "Founder", company: "Bloom Health" },
-    { quote: "They think like founders, not vendors. Rare.", author: "CTO", company: "Orbit SaaS" },
-    { quote: "Delivered 3 weeks early. Never happens with agencies.", author: "Product Lead", company: "Crest Retail" },
-    { quote: "Our Clutch review says 5 stars. Honestly, we'd give 6.", author: "CMO", company: "Frameshift" }
+    { quote: "Automated Jobs turned my search from a part-time job into a 20-minute daily review. Three interviews in my first two weeks.", author: "Backend Engineer", company: "Pro Seeker, Bengaluru" },
+    { quote: "The match scores are scarily accurate. The one role I applied to manually scored 71 — and it went exactly how the score said it would.", author: "Product Designer", company: "Pro Seeker, Remote" },
+    { quote: "Resume Studio rewrote my resume for a specific JD. ATS score jumped from 58 to 93 and I finally started passing screens.", author: "Data Analyst", company: "Free Seeker, Hyderabad" },
+    { quote: "I love that nothing sends without my approval. It automates the busywork, not the decisions.", author: "SDE-2 Candidate", company: "Pro Seeker, Pune" },
+    { quote: "Our whole bootcamp cohort runs on Automated Jobs. Placement tracking finally lives in one place instead of ten spreadsheets.", author: "Program Lead", company: "Campus Plan, Delhi NCR" }
   ]
 
   const [currentIndex, setCurrentIndex] = useState(0)

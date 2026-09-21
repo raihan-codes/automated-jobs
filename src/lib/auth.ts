@@ -223,7 +223,7 @@ export async function exchangeOAuthCode(
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,
         Accept: 'application/vnd.github.v3+json',
-        'User-Agent': 'AutoApply-AI'
+        'User-Agent': 'Automated-Jobs'
       }
     });
 
@@ -237,7 +237,7 @@ export async function exchangeOAuthCode(
           headers: {
             Authorization: `Bearer ${tokenData.access_token}`,
             Accept: 'application/vnd.github.v3+json',
-            'User-Agent': 'AutoApply-AI'
+            'User-Agent': 'Automated-Jobs'
           }
         });
         const emails = await emailsRes.json();

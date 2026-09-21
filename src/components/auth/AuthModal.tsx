@@ -120,7 +120,7 @@ export function AuthModal() {
             <span>Firebase Authentication & Isolated Vault</span>
           </div>
           <h2 className="text-xl font-bold text-white tracking-tight">
-            {tab === 'SIGNIN' ? 'Welcome to AutoApply AI' : tab === 'SIGNUP' ? 'Create Candidate Account' : 'Switch Demo Profile'}
+            {tab === 'SIGNIN' ? 'Welcome to Automated Jobs' : tab === 'SIGNUP' ? 'Create Candidate Account' : 'Switch Demo Profile'}
           </h2>
           <p className="text-xs text-slate-400">
             {tab === 'DEMO'

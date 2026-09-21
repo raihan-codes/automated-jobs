@@ -1,7 +1,7 @@
 {
-  "name": "autoapply-ai",
+  "name": "automated-jobs",
   "version": "1.0.0",
-  "description": "AutoApply AI - Intelligent Career Operating System",
+  "description": "Automated Jobs - AI-Powered Job Search & Application Automation Platform",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

@@ -6,12 +6,12 @@ import ScrollReveal from '../ui/ScrollReveal'
 
 export default function StatsSection() {
   const stats = [
-    { num: 48, label: 'Projects Delivered', suffix: '+' },
-    { num: 12, label: 'Revenue Generated', prefix: '$', suffix: 'M' },
-    { num: 98, label: 'Satisfaction Rate', suffix: '%' },
-    { num: 4.9, label: 'Avg Clutch Rating', suffix: '★', decimals: 1 },
-    { num: 6, label: 'Years in Business' },
-    { num: 3, label: 'Countries Served' }
+    { num: 12400, label: 'Live Roles Tracked', suffix: '+' },
+    { num: 11, label: 'Hours Saved Weekly', suffix: 'h' },
+    { num: 93, label: 'Avg ATS Score After Tailoring', suffix: '%' },
+    { num: 3.4, label: 'More Interview Callbacks', suffix: '×', decimals: 1 },
+    { num: 10, label: 'Connected Job Sources', suffix: '+' },
+    { num: 100, label: 'Human-Approved Submissions', suffix: '%' }
   ]
 
   return (

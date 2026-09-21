@@ -8,32 +8,32 @@ import ScrollReveal from '../ui/ScrollReveal'
 export default function PricingSection() {
   const plans = [
     {
-      name: 'Starter',
-      price: '₹1.5L',
-      desc: 'Perfect for: Startups & MVPs',
-      features: ['Brand Identity', '5-page website', 'Responsive Design', 'Basic SEO Setup', '3 months support'],
-      timeline: '3 weeks',
-      btnText: 'Get Started',
+      name: 'Free Seeker',
+      price: '₹0',
+      desc: 'Perfect for: Getting organized',
+      features: ['Multi-source job search', 'AI match scores', '3 tailored resumes / month', 'Application tracking pipeline', 'Weekly job alert digest'],
+      timeline: 'Forever free',
+      btnText: 'Start Free',
       btnClass: 'bg-signal text-ink-950 hover:shadow-[0_0_20px_rgba(232,255,71,0.2)]',
       borderClass: 'border-white/10'
     },
     {
-      name: 'Growth',
-      price: '₹4L',
-      desc: 'Perfect for: Scaling companies',
-      features: ['Full design system', 'Custom Web App', 'Advanced Animations', 'Technical SEO', 'Analytics Integration', '6 months support'],
-      timeline: '6 weeks',
-      btnText: 'Get Started',
+      name: 'Pro Seeker',
+      price: '₹499/mo',
+      desc: 'Perfect for: Active job hunters',
+      features: ['Unlimited tailored resumes', 'One-click apply automation', 'Priority real-time job alerts', 'ATS score & gap analysis', 'Interview tracking & notes', 'Resume version history'],
+      timeline: 'Cancel anytime',
+      btnText: 'Go Pro',
       btnClass: 'bg-signal text-ink-950 hover:shadow-[0_0_20px_rgba(232,255,71,0.2)]',
       borderClass: 'border-signal/50',
       popular: true
     },
     {
-      name: 'Enterprise',
+      name: 'Campus & Teams',
       price: 'Custom',
-      desc: 'Perfect for: Series A+ companies',
-      features: ['Everything in Growth', 'Dedicated Team', 'AI Features Integration', 'Custom Backend', 'Scalability Audits', 'Priority Support'],
-      timeline: 'Custom',
+      desc: 'Perfect for: Cohorts & bootcamps',
+      features: ['Everything in Pro', 'Bulk member onboarding', 'Placement-cell dashboards', 'Shared source connectors', 'Dedicated support', 'SSO & admin controls'],
+      timeline: 'Term-based billing',
       btnText: 'Talk to Us',
       btnClass: 'border border-ember text-ember hover:bg-ember hover:text-ink-950',
       borderClass: 'border-ember/30'
@@ -44,9 +44,9 @@ export default function PricingSection() {
     <section className="bg-ink-950 py-32" id="pricing">
       <div className="max-w-7xl mx-auto px-6 md:px-12">
         <ScrollReveal className="text-center mb-20 md:mb-24">
-          <p className="font-mono text-xs text-signal uppercase tracking-widest mb-4">Investment</p>
-          <h2 className="font-display text-5xl md:text-6xl font-bold tracking-tight mb-6">Honest pricing.<br/>No surprises.</h2>
-          <p className="text-mist-900 max-w-lg mx-auto">We don't believe in hidden fees or bloated retainers. Just clear deliverables and predictable timelines.</p>
+          <p className="font-mono text-xs text-signal uppercase tracking-widest mb-4">Pricing</p>
+          <h2 className="font-display text-5xl md:text-6xl font-bold tracking-tight mb-6">Fair pricing.<br/>Serious job hunting.</h2>
+          <p className="text-mist-900 max-w-lg mx-auto">Start free and stay free if you like. Upgrade only when you want unlimited tailoring and automation — no hidden fees, cancel anytime.</p>
         </ScrollReveal>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">

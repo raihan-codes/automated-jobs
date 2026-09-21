@@ -4,11 +4,11 @@ import React from 'react'
 import MarqueeText from '../ui/MarqueeText'
 
 export default function LogoCloud() {
-  const companies1 = [
-    'Vercel', 'Stripe', 'Linear', 'Notion', 'Figma', 
-    'Shopify', 'Loom', 'Arc', 'Raycast', 'Pitch'
+  const sources1 = [
+    'Greenhouse', 'Lever', 'Ashby', 'Workable', 'LinkedIn',
+    'Indeed', 'Wellfound', 'Internshala', 'Handshake', 'Career Pages'
   ]
-  const companies2 = [...companies1].reverse() // the reversed list
+  const sources2 = [...sources1].reverse() // the reversed list
 
   const LogoText = ({ name }: { name: string }) => (
     <span className="font-display text-4xl md:text-5xl font-semibold text-white/20 hover:text-white/80 transition-colors duration-300" data-cursor="hover">
@@ -16,14 +16,14 @@ export default function LogoCloud() {
     </span>
   )
 
-  const mapped1 = companies1.map(c => <LogoText key={c} name={c} />)
-  const mapped2 = companies2.map(c => <LogoText key={c} name={c} />)
+  const mapped1 = sources1.map(c => <LogoText key={c} name={c} />)
+  const mapped2 = sources2.map(c => <LogoText key={c} name={c} />)
 
   return (
     <section className="bg-ink-900 py-24 pb-32 border-b border-white/5 relative overflow-hidden group">
       <div className="max-w-7xl mx-auto px-6 mb-16 relative z-10">
         <p className="text-center font-mono text-xs text-mist-900 uppercase tracking-widest">
-          Trusted by forward-thinking companies
+          Aggregating roles from the sources you already use
         </p>
       </div>
       

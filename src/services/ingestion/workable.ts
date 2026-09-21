@@ -28,7 +28,7 @@ export class WorkableAdapter extends BaseConnector {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'AutoApplyAI-Discovery-Agent/1.0 (+https://autoapply.ai)'
+          'User-Agent': 'AutomatedJobs-Discovery-Agent/1.0'
         },
         body: JSON.stringify({ query: options?.query || '' }),
         signal: AbortSignal.timeout(6000)

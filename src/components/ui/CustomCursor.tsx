@@ -20,12 +20,18 @@ export default function CustomCursor() {
 
   useEffect(() => {
     setMounted(true)
+    // Only the marketing landing renders the custom cursor — mark the body
+    // so globals.css hides the native cursor there (and only there).
+    document.body.classList.add('landing-page')
     const onMouseMove = (e: MouseEvent) => {
       mouseX.set(e.clientX)
       mouseY.set(e.clientY)
     }
     window.addEventListener('mousemove', onMouseMove)
-    return () => window.removeEventListener('mousemove', onMouseMove)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      document.body.classList.remove('landing-page')
+    }
   }, [mouseX, mouseY])
 
   useEffect(() => {

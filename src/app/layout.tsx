@@ -5,8 +5,8 @@ import { AuthModal } from '@/components/auth/AuthModal';
 import { PageTransition } from '@/components/ui/PageTransition';
 
 export const metadata: Metadata = {
-  title: 'NEXUS Studio — Strategy, Design & Engineering',
-  description: 'We are an award-winning studio pushing the boundaries of strategy, design, and engineering to build digital products people love.',
+  title: 'Automated Jobs — AI-Powered Job Search & Application Automation',
+  description: 'Automated Jobs helps you discover, manage, track, and automate your job-search workflow: AI job matching, ATS-ready resume tailoring, application tracking, and job alerts in one platform.',
 };
 
 export default function RootLayout({

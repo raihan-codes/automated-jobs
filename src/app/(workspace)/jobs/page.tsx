@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   Search,
   Filter,
@@ -43,15 +44,16 @@ const ALL_PLATFORMS = [
   { id: 'CAREER_PAGES', label: 'Company Careers' }
 ];
 
-export default function JobsExplorerPage() {
+function JobsExplorerContent() {
   const { user } = useAuth();
   const activeUserId = user?.uid || 'user_raihan_molla';
+  const searchParams = useSearchParams();
 
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [candidateName, setCandidateName] = useState<string>('Candidate');
   const [hasCustomProfile, setHasCustomProfile] = useState<boolean>(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || searchParams.get('project') || '');
   const [selectedPlatform, setSelectedPlatform] = useState<string>('ALL');
   const [selectedEmploymentType, setSelectedEmploymentType] = useState<string>('ALL');
   const [remoteOnly, setRemoteOnly] = useState(false);
@@ -64,17 +66,12 @@ export default function JobsExplorerPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
-  const { user } = useAuth();
-
-  const fetchJobs = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+  const fetchJobs = useCallback(async (queryOverride?: string) => {
     setLoading(true);
     try {
+      const q = typeof queryOverride === 'string' ? queryOverride : searchQuery;
       const params = new URLSearchParams();
-      if (searchQuery) params.append('q', searchQuery);
+      if (q) params.append('q', q);
       if (selectedPlatform !== 'ALL') params.append('platform', selectedPlatform);
       if (selectedEmploymentType !== 'ALL') params.append('type', selectedEmploymentType);
       if (remoteOnly) params.append('remote', 'true');
@@ -102,11 +99,17 @@ export default function JobsExplorerPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery, selectedPlatform, selectedEmploymentType, remoteOnly, minMatchScore, activeUserId, user]);
 
   useEffect(() => {
-    fetchJobs();
-  }, [selectedPlatform, selectedEmploymentType, remoteOnly, minMatchScore, activeUserId]);
+    const q = searchParams.get('q') || searchParams.get('project');
+    if (q !== null && q !== searchQuery) {
+      setSearchQuery(q);
+      fetchJobs(q);
+    } else {
+      fetchJobs();
+    }
+  }, [searchParams, selectedPlatform, selectedEmploymentType, remoteOnly, minMatchScore, activeUserId]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -517,5 +520,20 @@ export default function JobsExplorerPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function JobsExplorerPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-16 text-center text-slate-400 space-y-3">
+          <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin mx-auto" />
+          <p className="text-xs font-medium font-mono">Loading Job Explorer &amp; AI Recommendations...</p>
+        </div>
+      }
+    >
+      <JobsExplorerContent />
+    </Suspense>
   );
 }

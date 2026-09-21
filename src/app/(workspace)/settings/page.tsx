@@ -66,7 +66,7 @@ export default function SettingsPage() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ logs, user, exportedAt: new Date() }, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", "AutoApply_Candidate_Data_Export.json");
+    downloadAnchor.setAttribute("download", "AutomatedJobs_Candidate_Data_Export.json");
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();

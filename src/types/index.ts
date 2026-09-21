@@ -1,4 +1,4 @@
-// Core Domain Types & State Machines for AutoApply AI
+// Core Domain Types & State Machines for Automated Jobs
 
 export type ApplicationStatus =
   | 'DISCOVERED'

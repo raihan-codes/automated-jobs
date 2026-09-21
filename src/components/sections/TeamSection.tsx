@@ -28,8 +28,8 @@ export default function TeamSection() {
     <section className="bg-ink-900 py-32" id="team">
       <div className="max-w-7xl mx-auto px-6 md:px-12">
         <ScrollReveal className="mb-16 md:mb-24">
-          <p className="font-mono text-xs text-signal uppercase tracking-widest mb-4">The Humans Behind The Pixels</p>
-          <h2 className="font-display text-5xl md:text-7xl font-bold tracking-tight">Our core team.</h2>
+          <p className="font-mono text-xs text-signal uppercase tracking-widest mb-4">The Humans Behind The Automation</p>
+          <h2 className="font-display text-5xl md:text-7xl font-bold tracking-tight">Built by job hunters.</h2>
         </ScrollReveal>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">

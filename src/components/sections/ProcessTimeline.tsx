@@ -16,12 +16,12 @@ export default function ProcessTimeline() {
   const scaleY = useTransform(scrollYProgress, [0, 1], [0, 1])
 
   const steps = [
-    { title: "Discovery Call", tagline: "15 minutes that change everything", desc: "A brief alignment on your goals, timeline, constraints, and budget. No pressure, just clarity.", duration: "Day 0" },
-    { title: "Deep Dive Workshop", tagline: "We become obsessed with your problem", desc: "We map user journeys, run competitive analysis, and unearth the technical constraints before writing a single line of code.", duration: "Week 1" },
-    { title: "Strategy Blueprint", tagline: "Your roadmap to digital dominance", desc: "We deliver a comprehensive architecture, proposed design system foundations, and technical stack choices.", duration: "Week 2" },
-    { title: "Design Sprints", tagline: "Pixels become possibilities", desc: "Weekly agile sprints. You get access to live Figma files and daily async updates. Feedback loops are tight and fast.", duration: "Weeks 3-5" },
-    { title: "Build & Iterate", tagline: "We ship. You approve. We refine.", desc: "Engineering happens transparently. We push to staging environments continuously so you can test as we build.", duration: "Weeks 4-7" },
-    { title: "Launch & Grow", tagline: "The beginning, not the end", desc: "Go-live is orchestrated meticulously. We set up analytics, monitor performance, and hand over the keys (or stay on for support).", duration: "Week 8+" }
+    { title: "Upload Your Resume", tagline: "Your profile builds itself", desc: "Drop in your existing resume — PDF or DOCX. We extract your experience, skills, links, and preferences into a structured candidate profile you can edit.", duration: "Minute 0" },
+    { title: "Discover & Match", tagline: "Every board, one search", desc: "Connectors sweep Greenhouse, Lever, Ashby, Workable, LinkedIn, Indeed and more. Each role is scored against your profile so the best fits surface first.", duration: "Day 0" },
+    { title: "Tailor The Resume", tagline: "ATS-ready, truthful, specific", desc: "Resume Studio rebuilds your resume against each job description — emphasizing real experience only. Match scores and gap analysis show you exactly why.", duration: "Minutes" },
+    { title: "Review & Approve", tagline: "You stay in control", desc: "Every generated document and pre-filled answer lands in your review queue. Nothing is sent until you personally approve it.", duration: "Day 1" },
+    { title: "Submit & Track", tagline: "One pipeline, zero spreadsheets", desc: "Approved applications are submitted and tracked end-to-end. Statuses, notes, and timelines update automatically as companies respond.", duration: "Ongoing" },
+    { title: "Interview & Iterate", tagline: "Insights compound every week", desc: "See which resumes, keywords, and sources actually convert. Alerts keep fresh matches flowing so your pipeline never goes quiet.", duration: "Week 2+" }
   ]
 
   const StepItem = ({ step, index }: { step: typeof steps[0], index: number }) => {
@@ -81,11 +81,11 @@ export default function ProcessTimeline() {
   }
 
   return (
-    <section ref={containerRef} className="bg-ink-900 relative" id="process">
+    <section ref={containerRef} className="bg-ink-900 relative" id="how-it-works">
       <div className="max-w-7xl mx-auto px-6 md:px-12 pt-32 pb-16">
         <ScrollReveal>
-          <p className="font-mono text-xs text-signal uppercase tracking-widest mb-4">Process</p>
-          <h2 className="font-display text-5xl md:text-7xl font-bold tracking-tight">How we get there.</h2>
+          <p className="font-mono text-xs text-signal uppercase tracking-widest mb-4">The Automation Pipeline</p>
+          <h2 className="font-display text-5xl md:text-7xl font-bold tracking-tight">How it works.</h2>
         </ScrollReveal>
       </div>
 

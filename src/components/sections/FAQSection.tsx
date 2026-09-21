@@ -22,9 +22,9 @@ export default function FAQSection() {
               </h2>
               <div className="relative -mt-16 md:-mt-20 ml-2">
                 <p className="font-mono text-xs text-signal uppercase tracking-widest mb-4">The details</p>
-                <h3 className="font-display text-4xl md:text-5xl font-bold mb-6">Answers to your questions.</h3>
+                <h3 className="font-display text-4xl md:text-5xl font-bold mb-6">Answers before you ask.</h3>
                 <p className="text-mist-900 font-body text-lg leading-relaxed max-w-sm">
-                  Everything you need to know about how we work, what we charge, and what happens when things go wrong.
+                  Everything about how Automated Jobs discovers roles, tailors resumes, protects your data, and keeps you in control of every application.
                 </p>
               </div>
             </div>

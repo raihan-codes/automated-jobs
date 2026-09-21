@@ -7,23 +7,23 @@ export default function StorySection() {
   const chapters = [
     {
       num: '01',
-      title: 'The world drowns in mediocre digital products.',
-      p1: 'Look at the tools you use every day. Most are clunky, slow, or just plain boring. The baseline for digital experiences has settled somewhere between "barely functional" and "forgettable."',
-      p2: 'Companies bleed revenue not because their idea is flawed, but because their execution lacks soul. In a sea of templates, average is the most dangerous place a brand can be.',
+      title: 'The job hunt is a part-time job nobody pays you for.',
+      p1: 'Trawling five job boards, rewriting your resume for every posting, copying the same answers into the same forms. The average job seeker spends 11 hours a week on work that a machine could do better.',
+      p2: 'Meanwhile, the best roles are filled in days. Every hour spent copy-pasting is an hour the right opportunity slips further away.',
       align: 'left'
     },
     {
       num: '02',
-      title: 'We believe every company deserves a world-class digital presence.',
-      p1: 'Your product is your absolute best salesperson. It doesn\'t sleep, it doesn\'t take days off. It should feel intuitive, look striking, and function flawlessly.',
-      p2: 'We reject the compromise between aesthetic beauty and technical performance. The best digital products do both beautifully.',
+      title: 'We believe applying to jobs should be as smart as the work you do.',
+      p1: 'Your profile already knows your skills. The job description already says what it needs. Matching the two — honestly, precisely, and at scale — is a solved problem waiting for the right platform.',
+      p2: 'Automation should amplify you, not impersonate you. Every generated resume and answer should be something you review, stand behind, and approve.',
       align: 'right'
     },
     {
       num: '03',
-      title: 'So we built a studio that does it differently.',
-      p1: 'No fluff. No bloated agency retainers. Just a ruthless focus on building what matters with the best craft possible.',
-      p2: 'From deep strategic foundations to pixel-perfect execution, our process is designed to push your brand from where it is to where it simply must be.',
+      title: 'So we built Automated Jobs.',
+      p1: 'One workspace that discovers roles everywhere, scores them against your resume, tailors ATS-ready documents, pre-fills applications, and tracks every status — with a human approval gate on every send.',
+      p2: 'From discovery to offer, your entire job-search workflow lives in one place. You make the decisions. We do the busywork.',
       align: 'center'
     }
   ]
@@ -77,8 +77,8 @@ export default function StorySection() {
 
                 {chapter.align === 'center' && (
                   <div className="mt-12">
-                    <a href="#team" className="inline-flex items-center gap-2 font-mono text-sm uppercase tracking-widest text-signal hover:text-white transition-colors" data-cursor="hover">
-                      Meet the team →
+                    <a href="#features" className="inline-flex items-center gap-2 font-mono text-sm uppercase tracking-widest text-signal hover:text-white transition-colors" data-cursor="hover">
+                      Explore the platform →
                     </a>
                   </div>
                 )}

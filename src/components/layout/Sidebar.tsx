@@ -45,10 +45,10 @@ export function Sidebar() {
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold text-base text-white tracking-tight">AutoApply</span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">AI</span>
+              <span className="font-bold text-base text-white tracking-tight">Automated</span>
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">Jobs</span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">Career Operating System</p>
+            <p className="text-[11px] text-slate-400 font-medium">Job Automation Platform</p>
           </div>
         </div>
 

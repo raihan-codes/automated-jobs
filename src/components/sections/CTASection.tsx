@@ -3,8 +3,21 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import MagneticButton from '../ui/MagneticButton'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/firebase/AuthContext'
 
 export default function CTASection() {
+  const router = useRouter()
+  const { user, openAuthModal, loginAsDemoUser } = useAuth()
+
+  const handleCta = () => {
+    if (user) {
+      router.push('/jobs')
+    } else {
+      loginAsDemoUser('user_raihan_molla', 'Raihan Molla', 'raihanmolla9903@gmail.com')
+      router.push('/jobs')
+    }
+  }
   return (
     <section className="relative min-h-screen bg-ink-950 flex flex-col justify-center items-center overflow-hidden py-32" id="cta">
       {/* Dramatic Background */}
@@ -34,7 +47,7 @@ export default function CTASection() {
           viewport={{ once: true }}
           className="font-mono text-xs text-mist-900 uppercase tracking-widest mb-8"
         >
-          Ready to build something great?
+          Ready to search smarter?
         </motion.p>
 
         <motion.h2 
@@ -42,11 +55,11 @@ export default function CTASection() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.1 }}
-          className="font-display text-7xl md:text-[8rem] lg:text-[10rem] tracking-tighter leading-[0.85] mb-12 flex flex-col"
+          className="font-display text-6xl sm:text-7xl md:text-[8rem] lg:text-[9rem] tracking-tighter leading-[0.85] mb-12 flex flex-col"
           data-cursor="hover"
         >
-          <span className="text-white">Let's make</span>
-          <span className="text-stroke">it happen.</span>
+          <span className="text-white">Stop applying.</span>
+          <span className="text-stroke">Start landing.</span>
         </motion.h2>
 
         <motion.p 
@@ -56,7 +69,7 @@ export default function CTASection() {
           transition={{ duration: 0.8, delay: 0.2 }}
           className="text-mist-500 font-body text-xl md:text-2xl mb-16 max-w-xl"
         >
-          We're now accepting a limited number of new projects for Q3. Book a discovery call to secure your spot.
+          Upload your resume once and let Automated Jobs handle the discovery, tailoring, and tracking — you stay in charge of every send.
         </motion.p>
 
         <motion.div
@@ -66,16 +79,16 @@ export default function CTASection() {
           transition={{ duration: 0.8, delay: 0.3 }}
           className="flex flex-col items-center gap-6 w-full"
         >
-          <MagneticButton className="px-12 py-6 text-xl md:text-2xl font-display font-medium bg-signal text-ink-950 rounded-full hover:shadow-[0_0_40px_rgba(232,255,71,0.3)] transition-all group overflow-hidden relative">
+          <MagneticButton onClick={handleCta} className="px-12 py-6 text-xl md:text-2xl font-display font-medium bg-signal text-ink-950 rounded-full hover:shadow-[0_0_40px_rgba(232,255,71,0.3)] transition-all group overflow-hidden relative">
             <span className="relative z-10 flex items-center gap-3">
-              Book a Free Call
+              {user ? 'Go to My Workspace' : 'Automate My Job Search'}
               <motion.span animate={{ x: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>&rarr;</motion.span>
             </span>
             <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity z-0"></div>
           </MagneticButton>
 
-          <a href="mailto:hello@nexus.studio" className="font-mono text-sm text-mist-700 hover:text-white transition-colors pb-1 border-b border-white/20 hover:border-white mt-4" data-cursor="text">
-            Or email us at hello@nexus.studio
+          <a href="mailto:hello@automatedjobs.app" className="font-mono text-sm text-mist-700 hover:text-white transition-colors pb-1 border-b border-white/20 hover:border-white mt-4" data-cursor="text">
+            Or email us at hello@automatedjobs.app
           </a>
         </motion.div>
 
@@ -91,7 +104,7 @@ export default function CTASection() {
               <div key={i} className={`w-10 h-10 rounded-full border-2 border-ink-950 bg-gradient-to-br ${i%2===0 ? 'from-ink-700 to-ink-900' : 'from-signal/20 to-ink-800'}`}></div>
             ))}
           </div>
-          <p className="font-mono text-xs text-mist-900">Join 48+ companies who chose us.</p>
+          <p className="font-mono text-xs text-mist-900">Join thousands of job seekers who automated their search.</p>
         </motion.div>
 
       </div>

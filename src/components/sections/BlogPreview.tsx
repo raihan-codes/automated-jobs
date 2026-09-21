@@ -5,9 +5,9 @@ import ScrollReveal from '../ui/ScrollReveal'
 
 export default function BlogPreview() {
   const posts = [
-    { title: 'Why 90% of SaaS products fail at onboarding (and how to fix it)', cat: 'UX Strategy', readTime: '7 min', date: 'Jan 2025' },
-    { title: 'The Indian startup design deficit: a ₹500Cr opportunity', cat: 'Industry', readTime: '5 min', date: 'Feb 2025' },
-    { title: 'AI won\'t replace designers. But it will replace bad designers.', cat: 'AI & Design', readTime: '9 min', date: 'Mar 2025' }
+    { title: 'The 11-hour job hunt: where all your application time actually goes', cat: 'Job Search', readTime: '7 min', date: 'Jan 2026' },
+    { title: 'ATS resume tailoring without lying: what AI should and shouldn\'t change', cat: 'Resume Studio', readTime: '5 min', date: 'Feb 2026' },
+    { title: 'Match scores explained: how we compute why a role fits you', cat: 'AI Matching', readTime: '9 min', date: 'Mar 2026' }
   ]
 
   return (
@@ -16,8 +16,8 @@ export default function BlogPreview() {
         
         <ScrollReveal className="flex flex-col md:flex-row justify-between items-end gap-8 mb-20">
           <div>
-            <p className="font-mono text-xs text-signal uppercase tracking-widest mb-4">Insights</p>
-            <h2 className="font-display text-5xl md:text-6xl font-bold tracking-tight">We share what we know.</h2>
+            <p className="font-mono text-xs text-signal uppercase tracking-widest mb-4">The Job Search Playbook</p>
+            <h2 className="font-display text-5xl md:text-6xl font-bold tracking-tight">We share what works.</h2>
           </div>
           <a href="#" className="font-mono text-sm text-mist-900 hover:text-white transition-colors border-b border-transparent hover:border-white pb-1 group" data-cursor="hover">
             View All Articles <span className="text-signal inline-block group-hover:translate-x-1 transition-transform">&rarr;</span>
