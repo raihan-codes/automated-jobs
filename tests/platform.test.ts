@@ -75,8 +75,52 @@ async function runTests() {
   assert(normalizedLever !== null && normalizedLever.experienceLevel === 'SENIOR', 'Lever adapter extracts seniority & metadata');
 
   // 3. JD Analyzer & Hard Filter Tests
-  console.log('\n--- 3. JD Analyzer & Cheap Hard Filters ---');
-  const candidate = db.profiles.get('user_alex_chen')!;
+  const candidate: CandidateProfileData = {
+    id: 'user_alex_chen',
+    fullName: 'Alex Chen',
+    email: 'alex.chen@example.com',
+    location: 'San Francisco, CA',
+    headline: 'Senior Full Stack Software Engineer',
+    yearsOfExperience: 5,
+    minSalary: 140000,
+    requiresVisa: false,
+    remotePreference: 'FLEXIBLE',
+    desiredTitles: ['Full Stack Software Engineer', 'Senior Software Engineer'],
+    skills: [
+      { name: 'TypeScript', years: 5, level: 'EXPERT' },
+      { name: 'React', years: 5, level: 'EXPERT' },
+      { name: 'Node.js', years: 5, level: 'EXPERT' },
+      { name: 'PostgreSQL', years: 4, level: 'ADVANCED' },
+      { name: 'Redis', years: 3, level: 'ADVANCED' },
+      { name: 'WebSockets', years: 3, level: 'ADVANCED' },
+      { name: 'Go', years: 3, level: 'ADVANCED' }
+    ],
+    experiences: [
+      {
+        company: 'Veloce Data Systems',
+        role: 'Senior Software Engineer',
+        startDate: '2023',
+        endDate: 'Present',
+        isCurrent: true,
+        bullets: ['Architected real-time event streaming pipeline processing 15M+ events/day using Node.js.']
+      }
+    ],
+    educations: [
+      {
+        institution: 'University of California, Berkeley',
+        degree: 'B.S. in Computer Science',
+        startYear: 2015,
+        endYear: 2019
+      }
+    ],
+    projects: [
+      {
+        title: 'Realtime Collaboration Engine',
+        technologies: ['TypeScript', 'React', 'WebSockets', 'Go'],
+        bullets: ['Built live multi-user collaborative canvas.']
+      }
+    ]
+  };
   const onsiteJob: NormalizedJobPosting = {
     sourcePlatform: 'GREENHOUSE',
     sourceJobId: 'onsite_1',

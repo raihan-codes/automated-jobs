@@ -36,6 +36,13 @@ interface AuthContextType {
   signUpWithEmail: (email: string, pass: string, name: string) => Promise<void>;
   signOutUser: () => Promise<void>;
   loginAsDemoUser: (id: string, name: string, email: string, role?: string) => void;
+  // Backward compatibility aliases
+  openLoginModal?: () => void;
+  closeLoginModal?: () => void;
+  signOut?: () => Promise<void>;
+  signInWithOAuth?: (provider?: any) => Promise<void>;
+  refreshSession?: () => Promise<void>;
+  oauthConfig?: any;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -50,7 +57,13 @@ const AuthContext = createContext<AuthContextType>({
   signInWithEmail: async () => {},
   signUpWithEmail: async () => {},
   signOutUser: async () => {},
-  loginAsDemoUser: () => {}
+  loginAsDemoUser: () => {},
+  openLoginModal: () => {},
+  closeLoginModal: () => {},
+  signOut: async () => {},
+  signInWithOAuth: async () => {},
+  refreshSession: async () => {},
+  oauthConfig: null
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -257,7 +270,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signInWithEmail,
         signUpWithEmail,
         signOutUser,
-        loginAsDemoUser
+        loginAsDemoUser,
+        openLoginModal: () => openAuthModal('SIGNIN'),
+        closeLoginModal: closeAuthModal,
+        signOut: signOutUser,
+        signInWithOAuth: async () => signInWithGoogle(),
+        refreshSession: async () => {},
+        oauthConfig: {
+          development: true,
+          demo: { isConfigured: true, label: 'Demo Sandbox' }
+        }
       }}
     >
       {children}

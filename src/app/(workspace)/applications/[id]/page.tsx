@@ -18,7 +18,7 @@ import {
   AlertTriangle,
   RefreshCw
 } from 'lucide-react';
-import { useAuth } from '@/components/auth/AuthContext';
+import { useAuth } from '@/lib/firebase/AuthContext';
 
 export default function ApplicationReviewPage() {
   const params = useParams();
@@ -34,13 +34,10 @@ export default function ApplicationReviewPage() {
   const [formFields, setFormFields] = useState<any[]>([]);
 
   const { user } = useAuth();
+  const activeUserId = user?.uid || 'user_raihan_molla';
 
   useEffect(() => {
     const fetchApplication = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
       try {
         // 1. Try fetching specific application record
         const res = await fetch(`/api/applications/${appId}`);
