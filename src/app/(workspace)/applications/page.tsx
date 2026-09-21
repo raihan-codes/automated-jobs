@@ -16,7 +16,6 @@ import {
   Send,
   Eye
 } from 'lucide-react';
-import { useAuth } from '@/components/auth/AuthContext';
 import { ApplicationStatus } from '@/types';
 import { useAuth } from '@/lib/firebase/AuthContext';
 
@@ -34,8 +33,6 @@ export default function ApplicationsPipelinePage() {
 
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const { user } = useAuth();
 
   const fetchApps = async () => {
     if (!user) {

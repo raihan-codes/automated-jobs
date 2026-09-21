@@ -26,8 +26,6 @@ import {
   Zap,
   Upload
 } from 'lucide-react';
-import { useAuth } from '@/components/auth/AuthContext';
-
 import { useAuth } from '@/lib/firebase/AuthContext';
 
 const ALL_PLATFORMS = [
