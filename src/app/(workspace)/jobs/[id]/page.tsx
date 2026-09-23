@@ -32,8 +32,8 @@ export default function JobDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  const { user } = useAuth();
-  const activeUserId = user?.uid || 'user_raihan_molla';
+  const { user, openAuthModal } = useAuth();
+  const activeUserId = user?.uid || '';
 
   useEffect(() => {
     let isMounted = true;
@@ -47,11 +47,10 @@ export default function JobDetailPage() {
       setLoading(true);
       try {
         // 1. Try fetching from the dedicated single job API endpoint
-        const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`, {
-          headers: {
-            'x-user-id': activeUserId
-          }
-        });
+        const headers: Record<string, string> = {};
+        if (activeUserId) headers['x-user-id'] = activeUserId;
+
+        const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`, { headers });
 
         if (res.ok) {
           const data = await res.json();
@@ -63,11 +62,7 @@ export default function JobDetailPage() {
         }
 
         // 2. Fallback: Query all jobs list and match by id or sourceJobId
-        const listRes = await fetch('/api/jobs', {
-          headers: {
-            'x-user-id': activeUserId
-          }
-        });
+        const listRes = await fetch('/api/jobs', { headers });
 
         if (listRes.ok) {
           const listData = await listRes.json();
@@ -113,6 +108,16 @@ export default function JobDetailPage() {
 
   const handleGenerateResumeAndPrepare = async () => {
     if (!job) return;
+
+    if (!user && !activeUserId) {
+      setActionMessage('Please sign in or create an account to tailor your resume and prepare your application.');
+      if (openAuthModal) {
+        openAuthModal('SIGNIN');
+      }
+      return;
+    }
+
+    const currentUserId = user?.uid || activeUserId || 'user_raihan_molla';
     setActionLoading(true);
     setActionMessage('Generating truthful JD-tailored resume & pre-filling ATS form with Playwright...');
     try {
@@ -121,37 +126,57 @@ export default function JobDetailPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': activeUserId
+          'x-user-id': currentUserId
         },
-        body: JSON.stringify({ jobId: job.id })
+        body: JSON.stringify({ jobId: job.id, userId: currentUserId })
       });
-      const dataResume = await resResume.json();
 
+      if (resResume.status === 401) {
+        setActionMessage('Session expired or login required. Opening sign-in...');
+        if (openAuthModal) openAuthModal('SIGNIN');
+        return;
+      }
+
+      const dataResume = await resResume.json();
       if (!dataResume.success) {
         throw new Error(dataResume.error || 'Failed to tailor resume');
       }
 
       // 2. Prepare Application via Automation Worker
-      const resPrep = await fetch(`/api/applications/${job.id}/prepare`, {
+      const resPrep = await fetch(`/api/applications/${encodeURIComponent(job.id)}/prepare`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': activeUserId
-        }
+          'x-user-id': currentUserId
+        },
+        body: JSON.stringify({ userId: currentUserId })
       });
+
+      if (resPrep.status === 401) {
+        setActionMessage('Session expired or login required. Opening sign-in...');
+        if (openAuthModal) openAuthModal('SIGNIN');
+        return;
+      }
+
       const dataPrep = await resPrep.json();
 
-      if (dataPrep.success) {
-        setActionMessage('Application prepared and paused at Human Approval checkpoint! Redirecting to review...');
+      if (dataPrep.success && dataPrep.result?.id) {
+        setActionMessage('Application prepared and saved! Redirecting to review checkpoint...');
         setTimeout(() => {
-          router.push(`/applications/${dataPrep.result?.id || 'app_' + job.company.toLowerCase().replace(/[^a-z0-9]/g, '') + '_1'}`);
-        }, 1500);
+          router.push(`/applications/${dataPrep.result.id}`);
+        }, 1200);
+      } else if (dataPrep.success) {
+        setActionMessage('Application created. Navigating to applications list...');
+        setTimeout(() => router.push('/applications'), 1200);
       } else {
-        router.push('/applications');
+        setActionMessage(dataPrep.error || 'Failed to prepare application');
+        setTimeout(() => setActionLoading(false), 2500);
+        return;
       }
     } catch (e: any) {
       setActionMessage(e.message || 'Operation failed');
-      setTimeout(() => router.push('/applications'), 1500);
+      setTimeout(() => setActionLoading(false), 2500);
+      return;
     } finally {
       setActionLoading(false);
     }
@@ -216,14 +241,47 @@ export default function JobDetailPage() {
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h1 className="text-xl md:text-2xl font-bold text-white">{job.title}</h1>
-                <span className="text-xs px-2.5 py-0.5 rounded-full font-mono bg-slate-800 text-slate-300 border border-slate-700">
-                  {job.sourcePlatform}
+                <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${
+                  job.sourcePlatform === 'ADZUNA'
+                    ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/30'
+                    : 'bg-amber-950/60 text-amber-300 border-amber-500/30'
+                }`}>
+                  Source: {job.sourcePlatform === 'ADZUNA' ? 'Adzuna' : 'Jooble'}
                 </span>
                 {job.isRemote && (
                   <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
                     Remote
                   </span>
                 )}
+                {(() => {
+                  const daysOld = Math.max(0, (Date.now() - new Date(job.postedAt).getTime()) / (1000 * 60 * 60 * 24));
+                  if (daysOld <= 7) {
+                    return (
+                      <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        🔥 Highly Recent
+                      </span>
+                    );
+                  }
+                  if (daysOld <= 30) {
+                    return (
+                      <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                        ⚡ Recent
+                      </span>
+                    );
+                  }
+                  if (daysOld <= 60) {
+                    return (
+                      <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        ⏳ Older (31-60d)
+                      </span>
+                    );
+                  }
+                  return (
+                    <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-slate-800 text-slate-400 border border-slate-700">
+                      Archived (&gt;60d)
+                    </span>
+                  );
+                })()}
               </div>
 
               <div className="flex items-center gap-4 text-xs text-slate-400 mt-2 flex-wrap">
@@ -232,14 +290,27 @@ export default function JobDetailPage() {
                 <span className="flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5 text-slate-500" /> {job.location}
                 </span>
-                {job.salaryMin && (
-                  <>
-                    <span>•</span>
-                    <span className="text-emerald-400 font-semibold font-mono flex items-center gap-1">
-                      <IndianRupee className="w-3.5 h-3.5" />
-                      ₹{(job.salaryMin / 100000).toFixed(0)}{job.salaryMax ? ` - ₹${(job.salaryMax / 100000).toFixed(0)}` : ''} LPA
-                    </span>
-                  </>
+                <span>•</span>
+                {job.salaryMin || job.salaryMax ? (
+                  <span className="text-emerald-400 font-semibold font-mono flex items-center gap-1">
+                    {job.salaryMin && job.salaryMax ? (
+                      job.salaryCurrency === 'INR'
+                        ? `₹${(job.salaryMin / 100000).toFixed(1)} - ₹${(job.salaryMax / 100000).toFixed(1)} LPA`
+                        : `${job.salaryCurrency} ${job.salaryMin.toLocaleString()} - ${job.salaryMax.toLocaleString()}`
+                    ) : job.salaryMin ? (
+                      job.salaryCurrency === 'INR'
+                        ? `₹${(job.salaryMin / 100000).toFixed(1)} LPA`
+                        : `${job.salaryCurrency} ${job.salaryMin.toLocaleString()}`
+                    ) : (
+                      job.salaryCurrency === 'INR'
+                        ? `Up to ₹${(job.salaryMax / 100000).toFixed(1)} LPA`
+                        : `Up to ${job.salaryCurrency} ${job.salaryMax.toLocaleString()}`
+                    )}
+                  </span>
+                ) : (
+                  <span className="text-slate-400 font-normal">
+                    Salary not disclosed
+                  </span>
                 )}
                 <span>•</span>
                 <span className="flex items-center gap-1">
@@ -251,13 +322,14 @@ export default function JobDetailPage() {
 
           <div className="flex items-center gap-3">
             <a
-              href={job.canonicalUrl}
+              href={job.applicationUrl || job.sourceUrl || job.canonicalUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-              title="Open Official Job Posting"
+              className="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-2 text-xs font-semibold"
+              title="Open Official Job Posting on Source"
             >
-              <ExternalLink className="w-5 h-5" />
+              <span>View on {job.sourcePlatform === 'ADZUNA' ? 'Adzuna' : 'Jooble'}</span>
+              <ExternalLink className="w-4 h-4" />
             </a>
 
             <button
@@ -284,12 +356,31 @@ export default function JobDetailPage() {
         {/* Left Column: AI Match Deep Breakdown */}
         <div className="space-y-6">
           <div className="glass-panel p-5 rounded-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 flex-wrap gap-2">
               <h2 className="text-sm font-bold text-white flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-cyan-400" />
                 <span>AI Match Analytics</span>
               </h2>
-              <span className="text-base font-extrabold text-indigo-300">{job.matchScore}% Match</span>
+              <div className="flex items-center gap-2">
+                <span className="text-base font-extrabold text-indigo-300 font-mono">{job.matchScore ?? 0}% Match</span>
+                {job.matchResult?.matchTier && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${
+                    job.matchResult.matchTier === 'EXCELLENT'
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                      : job.matchResult.matchTier === 'STRONG'
+                      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                      : job.matchResult.matchTier === 'GOOD'
+                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+                      : job.matchResult.matchTier === 'MODERATE'
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                      : job.matchResult.matchTier === 'PARTIAL'
+                      ? 'bg-orange-500/20 text-orange-300 border-orange-500/30'
+                      : 'bg-slate-700/50 text-slate-300 border-slate-600'
+                  }`}>
+                    {job.matchResult.matchTier}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Score Bars */}
@@ -297,25 +388,25 @@ export default function JobDetailPage() {
               <div>
                 <div className="flex justify-between text-slate-400 mb-1">
                   <span>Skills Overlap</span>
-                  <span className="text-white font-medium">{job.matchResult?.skillsScore || 95}%</span>
+                  <span className="text-white font-medium">{job.matchResult?.skillsScore ?? 0}%</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full"
-                    style={{ width: `${job.matchResult?.skillsScore || 95}%` }}
+                    style={{ width: `${job.matchResult?.skillsScore ?? 0}%` }}
                   />
                 </div>
               </div>
 
               <div>
                 <div className="flex justify-between text-slate-400 mb-1">
-                  <span>Experience Calibration</span>
-                  <span className="text-white font-medium">{job.matchResult?.experienceScore || 92}%</span>
+                  <span>Experience Fit</span>
+                  <span className="text-white font-medium">{job.matchResult?.experienceScore ?? 0}%</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full"
-                    style={{ width: `${job.matchResult?.experienceScore || 92}%` }}
+                    style={{ width: `${job.matchResult?.experienceScore ?? 0}%` }}
                   />
                 </div>
               </div>
@@ -323,12 +414,12 @@ export default function JobDetailPage() {
               <div>
                 <div className="flex justify-between text-slate-400 mb-1">
                   <span>Domain & Title Affinity</span>
-                  <span className="text-white font-medium">{job.matchResult?.domainScore || 90}%</span>
+                  <span className="text-white font-medium">{job.matchResult?.domainScore ?? 0}%</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full"
-                    style={{ width: `${job.matchResult?.domainScore || 90}%` }}
+                    style={{ width: `${job.matchResult?.domainScore ?? 0}%` }}
                   />
                 </div>
               </div>
@@ -361,15 +452,38 @@ export default function JobDetailPage() {
               <span>Matched Skills from Profile</span>
             </h2>
             <div className="flex flex-wrap gap-1.5">
-              {(job.matchResult?.matchedSkills || ['TypeScript', 'React', 'Node.js', 'PostgreSQL', 'Redis', 'Docker']).map((s: string) => (
-                <span
-                  key={s}
-                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
-                >
-                  ✓ {s}
-                </span>
-              ))}
+              {(job.matchResult?.matchedSkills && job.matchResult.matchedSkills.length > 0) ? (
+                job.matchResult.matchedSkills.map((s: string) => (
+                  <span
+                    key={s}
+                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                  >
+                    ✓ {s}
+                  </span>
+                ))
+              ) : (
+                <span className="text-xs text-slate-500 italic">No specific skill matches detected for this posting.</span>
+              )}
             </div>
+
+            {job.matchResult?.missingSkills && job.matchResult.missingSkills.length > 0 && (
+              <div className="pt-3 border-t border-slate-800 space-y-2">
+                <h3 className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>Missing / Additional Skills in JD</span>
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {job.matchResult.missingSkills.map((s: string) => (
+                    <span
+                      key={s}
+                      className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-amber-950/40 text-amber-300/90 border border-amber-500/20"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { JobMatcher } from '@/services/ai/matcher';
+import { ingestionService } from '@/services/ingestion/sync-runner';
 import { getUserMatchesFromFirestore, getProfileFromFirestore } from '@/lib/firebase/firestore';
 
 export const dynamic = 'force-dynamic';
@@ -27,8 +28,19 @@ export async function GET(request: Request) {
     }
   }
 
+  // If memory store has no jobs, or if user is searching a specific query, trigger real-time search across Adzuna + Jooble
+  if (db.jobPostings.length === 0 || (query && !db.jobPostings.some(j => j.title.toLowerCase().includes(query) || j.company.toLowerCase().includes(query)))) {
+    const searchQuery = query || (userProfile && userProfile.skills.length > 0 ? userProfile : 'Software Engineer');
+    await ingestionService.searchRealJobs(searchQuery, 'tenant_prod_enterprise_1', {
+      remoteOnly,
+      query: query || undefined
+    }).catch(err => {
+      console.warn('[Jobs API] Search error:', err.message);
+    });
+  }
+
   // Load any Firestore matches for this user
-  const firestoreMatches = await getUserMatchesFromFirestore(userId).catch(() => ({}));
+  const firestoreMatches: Record<string, any> = await getUserMatchesFromFirestore(userId).catch(() => ({}));
 
   let filtered = await Promise.all(db.jobPostings.map(async job => {
     let match = db.matches.find(m => m.jobPostingId === job.id && m.userId === userId);
@@ -64,14 +76,40 @@ export async function GET(request: Request) {
 
     return {
       ...job,
-      matchScore: match?.matchResult?.overallScore || 75,
+      matchScore: match?.matchResult?.overallScore ?? 0,
       matchResult: match?.matchResult,
       isStarred: match?.isStarred || false
     };
   }));
 
+  const recencyParam = searchParams.get('recency') || searchParams.get('maxDays') || '30';
+  const now = Date.now();
+
+  const getDaysOld = (postedAt: string | Date): number => {
+    const postedTime = new Date(postedAt).getTime();
+    if (isNaN(postedTime)) return 0;
+    return Math.max(0, (now - postedTime) / (1000 * 60 * 60 * 24));
+  };
+
+  const getRecencyCategory = (daysOld: number): 'HIGHLY_RECENT' | 'RECENT' | 'OLDER' | 'VERY_OLD' => {
+    if (daysOld <= 7) return 'HIGHLY_RECENT';
+    if (daysOld <= 30) return 'RECENT';
+    if (daysOld <= 60) return 'OLDER';
+    return 'VERY_OLD';
+  };
+
+  // Add recency classification to all jobs
+  let enriched = filtered.map(j => {
+    const daysOld = getDaysOld(j.postedAt);
+    return {
+      ...j,
+      daysOld: Math.round(daysOld * 10) / 10,
+      recencyCategory: getRecencyCategory(daysOld)
+    };
+  });
+
   if (query) {
-    filtered = filtered.filter(j =>
+    enriched = enriched.filter(j =>
       j.title.toLowerCase().includes(query) ||
       j.company.toLowerCase().includes(query) ||
       j.location.toLowerCase().includes(query) ||
@@ -82,32 +120,77 @@ export async function GET(request: Request) {
   }
 
   if (platform && platform !== 'ALL') {
-    filtered = filtered.filter(j => 
+    enriched = enriched.filter(j => 
       j.sourcePlatform === platform || (j.foundOnSources && j.foundOnSources.includes(platform as any))
     );
   }
 
   if (employmentType && employmentType !== 'ALL') {
-    filtered = filtered.filter(j => j.employmentType === employmentType);
+    enriched = enriched.filter(j => j.employmentType === employmentType);
   }
 
   if (remoteOnly) {
-    filtered = filtered.filter(j => j.isRemote);
+    enriched = enriched.filter(j => j.isRemote);
   }
 
   if (minScore > 0) {
-    filtered = filtered.filter(j => j.matchScore >= minScore);
+    enriched = enriched.filter(j => j.matchScore >= minScore);
   }
 
-  // Sort by personalized match score descending
-  filtered.sort((a, b) => b.matchScore - a.matchScore);
+  // Recency Window Filter Policy:
+  // - '7' / 'highly_recent': 0-7 days (Highly Recent)
+  // - '30' / 'recent' (Default): 0-30 days (Highly Recent + Recent)
+  // - '60': 0-60 days
+  // - 'older': >30 days (Explicitly show older jobs)
+  // - 'all': all jobs
+  if (recencyParam === '7' || recencyParam === 'highly_recent') {
+    enriched = enriched.filter(j => j.daysOld <= 7);
+  } else if (recencyParam === '60') {
+    enriched = enriched.filter(j => j.daysOld <= 60);
+  } else if (recencyParam === 'older') {
+    enriched = enriched.filter(j => j.daysOld > 30);
+  } else if (recencyParam === 'all' || recencyParam === 'Infinity') {
+    // Keep all jobs
+  } else {
+    // Default: 0-30 days (Recent opportunities only)
+    const maxDays = parseInt(recencyParam, 10);
+    const limit = isNaN(maxDays) ? 30 : maxDays;
+    enriched = enriched.filter(j => j.daysOld <= limit);
+  }
+
+  // Balanced Sorting:
+  // 1. Resume match score
+  // 2. Recency
+  // 3. Job relevance
+  // Ensures genuinely recent relevant jobs outrank older jobs with marginally higher match scores.
+  const getRecencyScore = (daysOld: number): number => {
+    if (daysOld <= 2) return 100;
+    if (daysOld <= 7) return 90;
+    if (daysOld <= 14) return 75;
+    if (daysOld <= 30) return 60;
+    if (daysOld <= 60) return 35;
+    return 10;
+  };
+
+  enriched.sort((a, b) => {
+    const rankA = (a.matchScore * 0.70) + (getRecencyScore(a.daysOld) * 0.30);
+    const rankB = (b.matchScore * 0.70) + (getRecencyScore(b.daysOld) * 0.30);
+    if (Math.abs(rankB - rankA) > 0.5) {
+      return rankB - rankA;
+    }
+    if (b.matchScore !== a.matchScore) {
+      return b.matchScore - a.matchScore;
+    }
+    return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
+  });
 
   return NextResponse.json({
     success: true,
     userId,
     hasCustomProfile: Boolean(userProfile && userProfile.skills && userProfile.skills.length > 0),
     candidateName: userProfile?.fullName || 'Candidate',
-    count: filtered.length,
-    jobs: filtered
+    recencyFilter: recencyParam,
+    count: enriched.length,
+    jobs: enriched
   });
 }

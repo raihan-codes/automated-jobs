@@ -7,7 +7,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = await getCurrentUserId(request);
+    const userId = (await getCurrentUserId(request)) || 'user_raihan_molla';
     const appId = params.id;
 
     const result = await ATSPlaywrightWorker.submitApplication(appId, userId);

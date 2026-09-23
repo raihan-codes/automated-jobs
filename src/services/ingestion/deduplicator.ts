@@ -42,7 +42,7 @@ export class JobDeduplicator {
 
   /**
    * Generates a semantic cross-platform matching key.
-   * Matches identical job openings across LinkedIn, Indeed, Greenhouse, Lever, etc.
+   * Matches identical job openings across Adzuna and Jooble.
    */
   public static generateCrossSourceKey(job: Partial<NormalizedJobPosting>): string {
     const cleanCompany = (job.company || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -60,17 +60,15 @@ export class JobDeduplicator {
   }
 
   /**
-   * Merges two job postings detected across different platforms.
-   * Combines foundOnSources list (e.g. ['GREENHOUSE', 'LINKEDIN', 'INDEED']) and preserves direct ATS URLs.
+   * Merges two job postings detected across Adzuna and Jooble.
+   * Combines foundOnSources list (e.g. ['ADZUNA', 'JOOBLE']) and preserves the best available application URL.
    */
   public static mergePostings(existing: NormalizedJobPosting, incoming: NormalizedJobPosting): NormalizedJobPosting {
     const combinedSources = Array.from(
       new Set([...(existing.foundOnSources || [existing.sourcePlatform]), ...(incoming.foundOnSources || [incoming.sourcePlatform])])
     );
 
-    // Prioritize direct ATS application URLs over third-party board links
-    const directPlatforms = ['GREENHOUSE', 'LEVER', 'ASHBY', 'WORKABLE', 'CAREER_PAGES'];
-    const preferIncomingUrl = directPlatforms.includes(incoming.sourcePlatform) && !directPlatforms.includes(existing.sourcePlatform);
+    const preferIncomingUrl = Boolean(incoming.applicationUrl && !existing.applicationUrl);
 
     return {
       ...existing,

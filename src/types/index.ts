@@ -14,16 +14,8 @@ export type ApplicationStatus =
   | 'OFFER';
 
 export type JobPlatform =
-  | 'GREENHOUSE'
-  | 'LEVER'
-  | 'ASHBY'
-  | 'WORKABLE'
-  | 'WELLFOUND'
-  | 'INTERNSHALA'
-  | 'HANDSHAKE'
-  | 'INDEED'
-  | 'LINKEDIN'
-  | 'CAREER_PAGES'
+  | 'ADZUNA'
+  | 'JOOBLE'
   | 'DIRECT';
 
 export type ApplicationMethod =
@@ -157,11 +149,15 @@ export interface NormalizedJobPosting {
 
 export interface MatchAnalysisResult {
   overallScore: number; // 0-100
+  matchTier?: 'EXCELLENT' | 'STRONG' | 'GOOD' | 'MODERATE' | 'PARTIAL' | 'LOW';
+  matchTierLabel?: string; // e.g. 'Excellent Match (92%)'
   hardFilterPassed: boolean;
   hardFilterReason?: string;
   skillsScore: number;
   experienceScore: number;
   domainScore: number;
+  educationScore?: number;
+  semanticScore?: number;
   matchedSkills: string[];
   missingSkills: string[];
   whyMatchReason: string;

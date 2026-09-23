@@ -220,13 +220,25 @@ export default function ResumeReviewPage() {
 
   // ── Salary formatter ─────────────────────────────────────────────────────
   const formatSalary = (job: MatchedJob) => {
-    if (job.salaryCurrency === 'INR') {
-      if (job.salaryMin && job.salaryMax) {
+    if (job.salaryMin && job.salaryMax) {
+      if (job.salaryCurrency === 'INR') {
         return `₹${(job.salaryMin / 100000).toFixed(0)}–${(job.salaryMax / 100000).toFixed(0)} LPA`;
       }
-      if (job.salaryMin) return `₹${(job.salaryMin / 100000).toFixed(0)} LPA`;
+      return `${job.salaryCurrency || '$'} ${job.salaryMin.toLocaleString()} - ${job.salaryMax.toLocaleString()}`;
     }
-    return 'Competitive';
+    if (job.salaryMin) {
+      if (job.salaryCurrency === 'INR') {
+        return `₹${(job.salaryMin / 100000).toFixed(0)} LPA`;
+      }
+      return `${job.salaryCurrency || '$'} ${job.salaryMin.toLocaleString()}`;
+    }
+    if (job.salaryMax) {
+      if (job.salaryCurrency === 'INR') {
+        return `Up to ₹${(job.salaryMax / 100000).toFixed(0)} LPA`;
+      }
+      return `Up to ${job.salaryCurrency || '$'} ${job.salaryMax.toLocaleString()}`;
+    }
+    return 'Salary not disclosed';
   };
 
   const scoreColor = (score: number) =>

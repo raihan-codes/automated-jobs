@@ -175,12 +175,25 @@ export default function ApplicationReviewPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {(application.job?.applicationUrl || application.job?.sourceUrl) && (
+              <a
+                href={application.job.applicationUrl || application.job.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-2 text-xs font-semibold"
+                title="Open Official Job Application"
+              >
+                <span>External Apply Link</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+
             {isPendingApproval ? (
               <button
                 onClick={handleApproveAndSubmit}
                 disabled={submitting}
-                className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2 disabled:opacity-50"
+                className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2 disabled:opacity-50"
               >
                 {submitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 <span>Approve & Finalize Submission</span>

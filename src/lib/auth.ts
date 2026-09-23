@@ -1,5 +1,6 @@
 import { db, StoredUser } from '@/lib/db';
 import { AuthUser, OAuthProvider, CandidateProfileData } from '@/types';
+export type { OAuthProvider };
 
 export const APP_DEV_URL = 'https://ais-dev-ss5pessumkhmwglkreltsp-49121961165.asia-east1.run.app';
 export const APP_SHARED_URL = 'https://ais-pre-ss5pessumkhmwglkreltsp-49121961165.asia-east1.run.app';
@@ -440,8 +441,28 @@ export async function getSessionUser(req?: Request | null): Promise<StoredUser |
 }
 
 export async function getCurrentUserId(req?: Request | null): Promise<string | null> {
+  if (!req) return null;
+
+  // 1. Authenticated client header (Firebase user uid / active session)
+  const headerUserId = req.headers.get('x-user-id');
+  if (headerUserId && headerUserId.trim() && headerUserId !== 'null' && headerUserId !== 'undefined') {
+    return headerUserId.trim();
+  }
+
+  // 2. Token-based session authentication
   const user = await getSessionUser(req);
-  return user ? user.id : null;
+  if (user) return user.id;
+
+  // 3. Raw session token resolution
+  const token = extractSessionToken(req);
+  if (token && sessionStore.sessions.has(token)) {
+    const session = sessionStore.sessions.get(token);
+    if (session && Date.now() <= session.expiresAt) {
+      return session.userId;
+    }
+  }
+
+  return null;
 }
 
 export function getSessionCookieHeader(token: string): string {

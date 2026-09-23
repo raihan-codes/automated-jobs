@@ -46,7 +46,7 @@ export async function GET(
 
   if (!match) {
     // Check Firestore
-    const firestoreMatches = await getUserMatchesFromFirestore(userId).catch(() => ({}));
+    const firestoreMatches: Record<string, any> = await getUserMatchesFromFirestore(userId).catch(() => ({}));
     if (firestoreMatches[job.id]) {
       match = {
         id: `match_${job.id}_${userId}`,
@@ -86,7 +86,7 @@ export async function GET(
 
   const enrichedJob = {
     ...job,
-    matchScore: match?.matchResult?.overallScore || 85,
+    matchScore: match?.matchResult?.overallScore ?? 0,
     matchResult: match?.matchResult,
     isStarred: match?.isStarred || false
   };

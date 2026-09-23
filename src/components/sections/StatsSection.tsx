@@ -23,7 +23,6 @@ export default function StatsSection() {
               <div className="font-display text-6xl md:text-8xl font-bold tracking-tighter tabular-nums">
                 <AnimatedCounter 
                   end={stat.num} 
-                  prefix={stat.prefix} 
                   suffix={stat.suffix} 
                   decimals={stat.decimals} 
                 />

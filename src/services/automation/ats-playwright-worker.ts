@@ -3,6 +3,7 @@ import { CandidateProfileData, ApplicationFormField, TailoredResumeContent, Norm
 import { FormPrefillEngine } from './form-prefill';
 import { AutomationExecutionResult } from './types';
 import { db } from '@/lib/db';
+import { saveApplicationToFirestore } from '@/lib/firebase/firestore';
 
 export class ATSPlaywrightWorker {
   /**
@@ -11,8 +12,7 @@ export class ATSPlaywrightWorker {
    * 1. Inspects form inputs.
    * 2. Pre-fills standard candidate information and attaches tailored resume.
    * 3. Classifies sensitive / ambiguous questions.
-   * 4. Takes a visual snapshot.
-   * 5. Enforces human-in-the-loop approval before final submission.
+   * 4. Enforces human-in-the-loop approval before final submission.
    */
   public static async prepareApplication(
     userId: string,
@@ -43,7 +43,7 @@ export class ATSPlaywrightWorker {
     // Auto-fill answer for "why company" with tailored pitch
     const whyCompanyField = fields.find(f => f.fieldKey === 'custom_why_company');
     if (whyCompanyField) {
-      whyCompanyField.fieldValue = `I have been following ${job.company}'s work and product craft. With my experience in ${candidateProfile.skills.slice(0, 3).map(s => s.name).join(', ')} and building scalable distributed systems, I am excited by the technical challenges of this role and the opportunity to make immediate engineering impact.`;
+      whyCompanyField.fieldValue = `I have been following ${job.company}'s work and product craft. With my experience in ${candidateProfile.skills.slice(0, 3).map(s => s.name).join(', ')} and building scalable software systems, I am excited by the technical challenges of this role and the opportunity to make immediate engineering impact.`;
       whyCompanyField.isFilledByAI = true;
       whyCompanyField.requiresUserReview = true;
       whyCompanyField.confidenceScore = 0.92;
@@ -63,29 +63,36 @@ export class ATSPlaywrightWorker {
       ? `Found ${sensitiveFields.length} field(s) requiring your explicit review: ${sensitiveFields.map(s => `"${s.fieldLabel}"`).join(', ')}.`
       : 'All standard fields pre-filled with 100% confidence.';
 
-    // Create / Update Application record in store
-    const appId = `app_${job.company.toLowerCase().replace(/[^a-z0-9]/g, '')}_${Date.now()}`;
-    const resumeId = tailoredResume ? `resume_${job.company.toLowerCase()}_${userId}` : undefined;
+    const targetJobId = (job as any).id || job.sourceJobId;
+    // Check for existing application for this job and user
+    const existingIdx = db.applications.findIndex(
+      a => (a.jobPostingId === targetJobId || a.jobPostingId === job.sourceJobId) && a.userId === userId
+    );
+
+    const appId = existingIdx >= 0
+      ? db.applications[existingIdx].id
+      : `app_${job.company.toLowerCase().replace(/[^a-z0-9]/g, '')}_${Date.now()}`;
+
+    const resumeId = tailoredResume ? `resume_${job.company.toLowerCase().replace(/[^a-z0-9]/g, '')}_${userId}` : undefined;
 
     const newApp = {
       id: appId,
       userId,
-      jobPostingId: job.sourceJobId,
+      jobPostingId: targetJobId,
       tailoredResumeId: resumeId,
       status: 'WAITING_FOR_APPROVAL' as const,
       automationEngine: 'PLAYWRIGHT' as const,
-      formUrl: job.sourceUrl,
+      formUrl: job.applicationUrl || job.sourceUrl,
       fields,
       hasSensitiveQuestions,
       requiresHumanInput: hasSensitiveQuestions,
       humanReviewNotes: reviewNotes,
       stage: 'SUBMITTED' as const,
       screenshotSnapshot: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80',
-      createdAt: new Date().toISOString(),
+      createdAt: existingIdx >= 0 ? db.applications[existingIdx].createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    const existingIdx = db.applications.findIndex(a => a.jobPostingId === job.sourceJobId && a.userId === userId);
     if (existingIdx >= 0) {
       db.applications[existingIdx] = {
         ...db.applications[existingIdx],
@@ -94,6 +101,11 @@ export class ATSPlaywrightWorker {
     } else {
       db.applications.unshift(newApp);
     }
+
+    // Persist to Firestore
+    await saveApplicationToFirestore(userId, newApp).catch(e =>
+      console.warn('[ATSWorker] Firestore app save warning:', e)
+    );
 
     // Create Notification for user
     db.notifications.unshift({
@@ -125,6 +137,7 @@ export class ATSPlaywrightWorker {
     });
 
     return {
+      id: appId,
       success: true,
       status: 'WAITING_FOR_APPROVAL',
       fields,
@@ -138,9 +151,14 @@ export class ATSPlaywrightWorker {
    * Final submission trigger called ONLY after explicit user confirmation
    */
   public static async submitApplication(applicationId: string, userId: string): Promise<{ success: boolean; message: string }> {
-    const app = db.applications.find(a => a.id === applicationId && a.userId === userId);
+    let app = db.applications.find(a => a.id === applicationId && a.userId === userId);
     if (!app) {
-      throw new Error(`Application ${applicationId} not found`);
+      // Check in general array
+      app = db.applications.find(a => a.id === applicationId);
+    }
+
+    if (!app) {
+      throw new Error(`Application ${applicationId} not found in database.`);
     }
 
     app.status = 'SUBMITTED';
@@ -148,6 +166,11 @@ export class ATSPlaywrightWorker {
     app.submittedAt = new Date().toISOString();
     app.stage = 'SUBMITTED';
     app.updatedAt = new Date().toISOString();
+
+    // Persist to Firestore
+    await saveApplicationToFirestore(userId, app).catch(e =>
+      console.warn('[ATSWorker] Firestore app submit save warning:', e)
+    );
 
     db.notifications.unshift({
       id: `notif_${Date.now()}`,

@@ -12,6 +12,7 @@ import {
   Building2,
   MapPin,
   IndianRupee,
+  DollarSign,
   ArrowUpRight,
   ExternalLink,
   SlidersHorizontal,
@@ -24,23 +25,44 @@ import {
   GraduationCap,
   ShieldCheck,
   Zap,
-  Upload
+  Upload,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/AuthContext';
 
 const ALL_PLATFORMS = [
-  { id: 'ALL', label: 'All Sources (Global Aggregation)' },
-  { id: 'GREENHOUSE', label: 'Greenhouse' },
-  { id: 'LEVER', label: 'Lever' },
-  { id: 'ASHBY', label: 'Ashby' },
-  { id: 'WORKABLE', label: 'Workable' },
-  { id: 'WELLFOUND', label: 'Wellfound' },
-  { id: 'INTERNSHALA', label: 'Internshala' },
-  { id: 'HANDSHAKE', label: 'Handshake' },
-  { id: 'INDEED', label: 'Indeed' },
-  { id: 'LINKEDIN', label: 'LinkedIn' },
-  { id: 'CAREER_PAGES', label: 'Company Careers' }
+  { id: 'ALL', label: 'All Sources (Adzuna + Jooble)' },
+  { id: 'ADZUNA', label: 'Adzuna' },
+  { id: 'JOOBLE', label: 'Jooble' }
 ];
+
+function formatRelativeTime(dateInput: any): string {
+  if (!dateInput) return '';
+  const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return '';
+
+  const now = Date.now();
+  const diffMs = Math.max(0, now - date.getTime());
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHours = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffHours < 1) {
+    return diffMin <= 1 ? 'Posted just now' : `Posted ${diffMin} mins ago`;
+  }
+  if (diffHours < 24) {
+    return diffHours === 1 ? 'Posted 1 hour ago' : `Posted ${diffHours} hours ago`;
+  }
+  if (diffDays === 1) {
+    return 'Posted 1 day ago';
+  }
+  if (diffDays < 30) {
+    return `Posted ${diffDays} days ago`;
+  }
+  const diffMonths = Math.floor(diffDays / 30);
+  return diffMonths === 1 ? 'Posted 1 month ago' : `Posted ${diffMonths} months ago`;
+}
 
 function JobsExplorerContent() {
   const { user } = useAuth();
@@ -54,13 +76,14 @@ function JobsExplorerContent() {
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || searchParams.get('project') || '');
   const [selectedPlatform, setSelectedPlatform] = useState<string>('ALL');
   const [selectedEmploymentType, setSelectedEmploymentType] = useState<string>('ALL');
+  const [selectedRecency, setSelectedRecency] = useState<string>('30');
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [minMatchScore, setMinMatchScore] = useState<number>(0);
 
   // Sync Modal State
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [syncPlatform, setSyncPlatform] = useState('ALL');
-  const [syncCompanySlug, setSyncCompanySlug] = useState('tech');
+  const [syncQuery, setSyncQuery] = useState('software engineer');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
@@ -72,6 +95,7 @@ function JobsExplorerContent() {
       if (q) params.append('q', q);
       if (selectedPlatform !== 'ALL') params.append('platform', selectedPlatform);
       if (selectedEmploymentType !== 'ALL') params.append('type', selectedEmploymentType);
+      if (selectedRecency) params.append('recency', selectedRecency);
       if (remoteOnly) params.append('remote', 'true');
       if (minMatchScore > 0) params.append('minScore', String(minMatchScore));
 
@@ -82,7 +106,7 @@ function JobsExplorerContent() {
       });
       const data = await res.json();
       if (data.success) {
-        setJobs(data.jobs);
+        setJobs(data.jobs || []);
         setHasCustomProfile(Boolean(data.hasCustomProfile));
         if (user?.displayName) {
           setCandidateName(user.displayName);
@@ -97,7 +121,7 @@ function JobsExplorerContent() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedPlatform, selectedEmploymentType, remoteOnly, minMatchScore, activeUserId, user]);
+  }, [searchQuery, selectedPlatform, selectedEmploymentType, selectedRecency, remoteOnly, minMatchScore, activeUserId, user]);
 
   useEffect(() => {
     const q = searchParams.get('q') || searchParams.get('project');
@@ -107,7 +131,7 @@ function JobsExplorerContent() {
     } else {
       fetchJobs();
     }
-  }, [searchParams, selectedPlatform, selectedEmploymentType, remoteOnly, minMatchScore, activeUserId]);
+  }, [searchParams, selectedPlatform, selectedEmploymentType, selectedRecency, remoteOnly, minMatchScore, activeUserId]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,7 +146,7 @@ function JobsExplorerContent() {
       const res = await fetch('/api/jobs/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform: syncPlatform, companySlug: syncCompanySlug })
+        body: JSON.stringify({ platform: syncPlatform, query: syncQuery })
       });
       const data = await res.json();
       if (data.success) {
@@ -140,11 +164,71 @@ function JobsExplorerContent() {
 
   const formatSalary = (job: any) => {
     if (job.salaryMin && job.salaryMax) {
-      const minLPA = (job.salaryMin / 100000).toFixed(0);
-      const maxLPA = (job.salaryMax / 100000).toFixed(0);
-      return `₹${minLPA} - ₹${maxLPA} LPA`;
+      if (job.salaryCurrency === 'INR') {
+        const minLPA = (job.salaryMin / 100000).toFixed(1).replace(/\.0$/, '');
+        const maxLPA = (job.salaryMax / 100000).toFixed(1).replace(/\.0$/, '');
+        return `₹${minLPA} - ₹${maxLPA} LPA`;
+      }
+      return `${job.salaryCurrency || '$'} ${job.salaryMin.toLocaleString()} - ${job.salaryMax.toLocaleString()}`;
     }
-    return job.salaryMin ? `₹${(job.salaryMin / 100000).toFixed(0)} LPA` : 'Competitive';
+    if (job.salaryMin) {
+      if (job.salaryCurrency === 'INR') {
+        const minLPA = (job.salaryMin / 100000).toFixed(1).replace(/\.0$/, '');
+        return `₹${minLPA} LPA`;
+      }
+      return `${job.salaryCurrency || '$'} ${job.salaryMin.toLocaleString()}`;
+    }
+    if (job.salaryMax) {
+      if (job.salaryCurrency === 'INR') {
+        const maxLPA = (job.salaryMax / 100000).toFixed(1).replace(/\.0$/, '');
+        return `Up to ₹${maxLPA} LPA`;
+      }
+      return `Up to ${job.salaryCurrency || '$'} ${job.salaryMax.toLocaleString()}`;
+    }
+    return 'Salary not disclosed';
+  };
+
+  const getMatchTierInfo = (score: number) => {
+    if (score >= 90) {
+      return {
+        label: 'Excellent Match',
+        badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+        scoreColor: 'text-emerald-400'
+      };
+    }
+    if (score >= 80) {
+      return {
+        label: 'Strong Match',
+        badgeClass: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+        scoreColor: 'text-indigo-400'
+      };
+    }
+    if (score >= 70) {
+      return {
+        label: 'Good Match',
+        badgeClass: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+        scoreColor: 'text-cyan-400'
+      };
+    }
+    if (score >= 60) {
+      return {
+        label: 'Moderate Match',
+        badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+        scoreColor: 'text-amber-400'
+      };
+    }
+    if (score >= 40) {
+      return {
+        label: 'Partial Match',
+        badgeClass: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+        scoreColor: 'text-orange-400'
+      };
+    }
+    return {
+      label: 'Low Match',
+      badgeClass: 'bg-slate-700/50 text-slate-300 border-slate-600',
+      scoreColor: 'text-slate-400'
+    };
   };
 
   return (
@@ -154,13 +238,13 @@ function JobsExplorerContent() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Globe className="w-4 h-4 text-cyan-400" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Global Multi-Source Ingestion Engine</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Live Adzuna &amp; Jooble Real Job Search</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-            Global Job & Internship Discovery Hub
+            Real-Time Job &amp; Internship Search
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Aggregated across 10+ verified career sources (Greenhouse, Lever, Ashby, Workable, Wellfound, Internshala, Handshake, Indeed, LinkedIn, Direct Career Pages) with cross-platform deduplication and zero-hallucination AI matching.
+            Discovered dynamically from official <strong className="text-slate-200">Adzuna</strong> and <strong className="text-slate-200">Jooble</strong> APIs. Zero dummy jobs, cross-platform deduplication, and genuine ATS/company application links.
           </p>
         </div>
 
@@ -169,7 +253,7 @@ function JobsExplorerContent() {
           className="glass-button-primary flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-white self-start md:self-auto"
         >
           <Plus className="w-4 h-4" />
-          <span>Sync Connectors & Career Boards</span>
+          <span>Live Search / Sync APIs</span>
         </button>
       </div>
 
@@ -182,14 +266,14 @@ function JobsExplorerContent() {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-xs font-bold text-white">
-                Personalized AI Recommendations for {candidateName}
+                Personalized Job Matching for {candidateName}
               </h3>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30">
-                {hasCustomProfile ? 'Resume Match Active' : 'Default Profile'}
+                {hasCustomProfile ? 'Resume Match Active' : 'Profile Search'}
               </span>
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Match scores & why-match explanations are dynamically calibrated against your uploaded resume in your Firebase Vault.
+              Match scores &amp; skill alignments are calculated directly between your candidate profile and live API job requirements.
             </p>
           </div>
         </div>
@@ -210,7 +294,7 @@ function JobsExplorerContent() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by title, company, skills, or location (e.g. Full Stack, Kolkata, Bengaluru, San Francisco, React, Go)..."
+              placeholder="Search real jobs by title, skills, company, or location (e.g. Python, Data Analyst, React, Bengaluru)..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700/80 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
@@ -224,47 +308,75 @@ function JobsExplorerContent() {
           </button>
         </form>
 
-        {/* Opportunity Type Toggles (All vs Full Time vs Internships) */}
-        <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
-          <span className="text-xs text-slate-400 font-medium mr-1 flex items-center gap-1">
-            <Briefcase className="w-3.5 h-3.5" /> Opportunity Type:
-          </span>
-          {[
-            { id: 'ALL', label: 'All Opportunities' },
-            { id: 'FULL_TIME', label: 'Full-Time Jobs' },
-            { id: 'INTERNSHIP', label: 'Internships & Co-ops' }
-          ].map(t => (
-            <button
-              key={t.id}
-              onClick={() => setSelectedEmploymentType(t.id)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                selectedEmploymentType === t.id
-                  ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 shadow-sm'
-                  : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        {/* Opportunity Type & Recency Toggles */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-slate-400 font-medium mr-1 flex items-center gap-1">
+              <Briefcase className="w-3.5 h-3.5" /> Opportunity Type:
+            </span>
+            {[
+              { id: 'ALL', label: 'All Opportunities' },
+              { id: 'FULL_TIME', label: 'Full-Time' },
+              { id: 'INTERNSHIP', label: 'Internships' }
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => setSelectedEmploymentType(t.id)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  selectedEmploymentType === t.id
+                    ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 shadow-sm'
+                    : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Recency Filter */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs text-slate-400 font-medium mr-1 flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-cyan-400" /> Recency:
+            </span>
+            {[
+              { id: '30', label: '🌟 Recent (0–30d)' },
+              { id: '7', label: '🔥 Highly Recent (0–7d)' },
+              { id: '60', label: '⏳ Past 60d' },
+              { id: 'older', label: '📁 Older Jobs (>30d)' },
+              { id: 'all', label: 'All Time' }
+            ].map(r => (
+              <button
+                key={r.id}
+                onClick={() => setSelectedRecency(r.id)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  selectedRecency === r.id
+                    ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-500/50 shadow-sm'
+                    : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                }`}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Platform Source Filters (All 10 Connectors) */}
+        {/* Source Filters (Adzuna + Jooble) */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/60 text-xs">
           <div className="flex items-center gap-1.5 flex-wrap overflow-x-auto pb-1 max-w-full">
             <span className="text-slate-400 font-medium mr-1 flex items-center gap-1 shrink-0">
-              <Filter className="w-3.5 h-3.5" /> Source:
+              <Filter className="w-3.5 h-3.5" /> Verified Source:
             </span>
             {ALL_PLATFORMS.map(plat => (
               <button
                 key={plat.id}
                 onClick={() => setSelectedPlatform(plat.id)}
-                className={`px-2.5 py-1 rounded-lg font-medium transition-all shrink-0 ${
+                className={`px-3 py-1 rounded-lg font-medium transition-all shrink-0 ${
                   selectedPlatform === plat.id
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
                 }`}
               >
-                {plat.id === 'ALL' ? '🌟 ALL (Global)' : plat.label}
+                {plat.id === 'ALL' ? '🌟 All Sources' : plat.label}
               </button>
             ))}
           </div>
@@ -291,8 +403,8 @@ function JobsExplorerContent() {
               >
                 <option value={0}>All Scores</option>
                 <option value={80}>≥ 80% Match</option>
+                <option value={85}>≥ 85% Match</option>
                 <option value={90}>≥ 90% Match</option>
-                <option value={95}>≥ 95% Match</option>
               </select>
             </div>
           </div>
@@ -302,33 +414,55 @@ function JobsExplorerContent() {
       {/* Jobs Results Grid */}
       <div className="space-y-4">
         <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-          <span>Showing {jobs.length} aggregated opportunities across enabled connectors</span>
-          <span>Deduplicated & synced in real-time</span>
+          <span>Showing {jobs.length} genuine jobs returned from Adzuna &amp; Jooble APIs</span>
+          <span>Filtered by verified posting dates</span>
         </div>
 
         {loading ? (
-          <div className="p-12 text-center text-slate-400">Loading discovered jobs & internships...</div>
+          <div className="p-12 text-center text-slate-400 flex flex-col items-center gap-3">
+            <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+            <span className="text-xs font-mono">Fetching real jobs from Adzuna &amp; Jooble APIs...</span>
+          </div>
         ) : jobs.length === 0 ? (
           <div className="glass-panel p-12 rounded-2xl text-center space-y-3">
             <Compass className="w-10 h-10 text-slate-500 mx-auto" />
-            <h3 className="text-base font-semibold text-white">No opportunities matched your current criteria</h3>
+            <h3 className="text-base font-semibold text-white">No more recent matching jobs were found.</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Try selecting &quot;All Sources&quot;, clearing keyword filters, or running a sync across all connectors.
+              No jobs matching your filters were posted in this timeframe. Try broadening keywords, clearing filters, or switching to older jobs.
             </p>
+            {selectedRecency !== 'all' && selectedRecency !== 'older' && (
+              <div className="pt-2">
+                <button
+                  onClick={() => setSelectedRecency('all')}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-indigo-300 hover:text-white border border-slate-700 transition-colors"
+                >
+                  View All &amp; Older Jobs
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {jobs.map(job => {
               const deduplicatedSources = job.foundOnSources || [job.sourcePlatform];
-              const isMultiSource = deduplicatedSources.length > 1;
+              const relativeTime = formatRelativeTime(job.postedAt);
+              const applyLink = job.applicationUrl || job.sourceUrl || job.canonicalUrl;
+              const tierInfo = getMatchTierInfo(job.matchScore || 0);
+              const matchedSkillsList = job.matchResult?.matchedSkills || job.extractedSkills || [];
+              const missingSkillsList = job.matchResult?.missingSkills || [];
+              const hasRealSalary = Boolean(job.salaryMin || job.salaryMax);
+
+              const daysOld = typeof job.daysOld === 'number'
+                ? job.daysOld
+                : Math.max(0, (Date.now() - new Date(job.postedAt).getTime()) / (1000 * 60 * 60 * 24));
 
               return (
                 <div
                   key={job.id}
-                  className="glass-panel-interactive p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6"
+                  className="glass-panel-interactive p-5 rounded-2xl flex flex-col md:flex-row md:items-start justify-between gap-6"
                 >
-                  <div className="space-y-2.5 flex-1">
-                    <div className="flex items-center gap-3">
+                  <div className="space-y-3 flex-1">
+                    <div className="flex items-start gap-3">
                       <div className="w-11 h-11 rounded-xl bg-slate-800/90 border border-slate-700 flex items-center justify-center p-2 shrink-0">
                         {job.companyLogo ? (
                           <img src={job.companyLogo} alt={job.company} className="w-full h-full object-contain" />
@@ -336,9 +470,9 @@ function JobsExplorerContent() {
                           <Building2 className="w-6 h-6 text-slate-400" />
                         )}
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Link href={`/jobs/${job.id}`} className="text-base font-bold text-white hover:text-indigo-400 transition-colors">
+                          <Link href={`/jobs/${encodeURIComponent(job.id)}`} className="text-base font-bold text-white hover:text-indigo-400 transition-colors">
                             {job.title}
                           </Link>
                           
@@ -354,85 +488,163 @@ function JobsExplorerContent() {
                             </span>
                           )}
 
-                          {/* Application Method Indicator */}
-                          {job.applicationMethod === 'EXTERNAL_PORTAL_LINK' ? (
-                            <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 flex items-center gap-1">
-                              <ExternalLink className="w-2.5 h-2.5" />
-                              External Apply Link
+                          {/* Recency Badge */}
+                          {daysOld <= 7 ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              🔥 Highly Recent
+                            </span>
+                          ) : daysOld <= 30 ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                              ⚡ Recent
+                            </span>
+                          ) : daysOld <= 60 ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              ⏳ Older (31-60d)
                             </span>
                           ) : (
-                            <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                              <Zap className="w-2.5 h-2.5" />
-                              ATS Auto-Fill Ready
+                            <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-slate-800 text-slate-400 border border-slate-700">
+                              Archived (&gt;60d)
                             </span>
+                          )}
+
+                          {/* Source Label */}
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-semibold border ${
+                            job.sourcePlatform === 'ADZUNA'
+                              ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/30'
+                              : 'bg-amber-950/60 text-amber-300 border-amber-500/30'
+                          }`}>
+                            Source: {job.sourcePlatform === 'ADZUNA' ? 'Adzuna' : 'Jooble'}
+                          </span>
+                        </div>
+
+                        {/* Company, Location, Salary, Posted Time */}
+                        <div className="flex items-center gap-2 mt-1 flex-wrap text-xs text-slate-400">
+                          <span className="font-semibold text-slate-200">{job.company}</span>
+                          <span className="text-slate-600">•</span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-slate-500" /> {job.location}
+                          </span>
+                          <span className="text-slate-600">•</span>
+                          {hasRealSalary ? (
+                            <span className="text-emerald-400 font-semibold font-mono flex items-center gap-1">
+                              {job.salaryCurrency === 'INR' ? <IndianRupee className="w-3.5 h-3.5" /> : <DollarSign className="w-3.5 h-3.5" />}
+                              {formatSalary(job)}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 font-normal">
+                              {formatSalary(job)}
+                            </span>
+                          )}
+                          {relativeTime && (
+                            <>
+                              <span className="text-slate-600">•</span>
+                              <span className="flex items-center gap-1 text-slate-400">
+                                <Clock className="w-3.5 h-3.5 text-slate-500" /> {relativeTime}
+                              </span>
+                            </>
                           )}
                         </div>
 
-                        {/* Deduplication Multi-Source Badge */}
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <span className="text-xs font-semibold text-slate-200">{job.company}</span>
-                          <span className="text-xs text-slate-600">•</span>
-                          <span className="text-xs flex items-center gap-1 text-slate-400">
-                            <MapPin className="w-3.5 h-3.5 text-slate-500" /> {job.location}
-                          </span>
-                          <span className="text-xs text-slate-600">•</span>
-                          <span className="text-xs text-emerald-400 font-semibold font-mono flex items-center gap-1">
-                            <IndianRupee className="w-3.5 h-3.5" />
-                            {formatSalary(job)}
-                          </span>
-                        </div>
+                        {/* Deduplication Multiple Sources */}
+                        {deduplicatedSources.length > 1 && (
+                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                            <span className="text-[11px] text-slate-400 font-medium">Found on:</span>
+                            {deduplicatedSources.map((src: string, idx: number) => (
+                              <span
+                                key={idx}
+                                className="text-[10px] px-2 py-0.5 rounded font-mono font-medium bg-indigo-950/60 text-indigo-300 border border-indigo-500/30"
+                              >
+                                {src === 'ADZUNA' ? 'Adzuna' : 'Jooble'}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-                        {/* Cross-Source Deduplication Banner */}
-                        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                          <span className="text-[11px] text-slate-400 font-medium">Found on:</span>
-                          {deduplicatedSources.map((src: string, idx: number) => (
+                    {/* Matched Skills */}
+                    {matchedSkillsList.length > 0 && (
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+                          Matched Skills:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5 items-center">
+                          {matchedSkillsList.map((skill: string, idx: number) => (
                             <span
                               key={idx}
-                              className="text-[10px] px-2 py-0.5 rounded font-mono font-medium bg-indigo-950/60 text-indigo-300 border border-indigo-500/30"
+                              className="px-2 py-0.5 rounded-md bg-emerald-950/50 text-emerald-300 border border-emerald-500/30 text-[11px] font-medium"
                             >
-                              {src}
+                              ✓ {skill}
                             </span>
                           ))}
                         </div>
                       </div>
-                    </div>
+                    )}
 
-                    {/* Skill Tags */}
-                    {job.extractedSkills && job.extractedSkills.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {job.extractedSkills.slice(0, 6).map((skill: string, idx: number) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-[11px] font-mono text-slate-300"
-                          >
-                            {skill}
-                          </span>
-                        ))}
+                    {/* Missing Skills */}
+                    {missingSkillsList.length > 0 && (
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-semibold text-amber-400/90 uppercase tracking-wider">
+                          Missing / Less-matched:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5 items-center">
+                          {missingSkillsList.slice(0, 4).map((skill: string, idx: number) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-0.5 rounded-md bg-amber-950/30 text-amber-300/80 border border-amber-500/20 text-[10px]"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
                       </div>
+                    )}
+
+                    {/* Match Explanation */}
+                    {job.matchResult?.whyMatchReason && (
+                      <p className="text-xs text-slate-300 bg-slate-900/90 p-3 rounded-xl border border-slate-800 leading-relaxed">
+                        <strong className="text-indigo-300">Match Insights: </strong>
+                        {job.matchResult.whyMatchReason}
+                      </p>
                     )}
                   </div>
 
-                  {/* Right Score and Action */}
-                  <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center gap-4 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-800">
+                  {/* Right Score and Actions */}
+                  <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center gap-3 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-800">
                     <div className="text-left md:text-right">
-                      <div className="flex items-center gap-1.5 md:justify-end">
-                        <Sparkles className="w-4 h-4 text-cyan-400" />
-                        <span className="text-xl font-extrabold text-white font-mono">
-                          {job.matchScore || 90}%
+                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${tierInfo.badgeClass}`}>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span className="text-sm font-extrabold font-mono">
+                          {job.matchScore || 0}%
+                        </span>
+                        <span className="text-[10px] font-semibold uppercase">
+                          {tierInfo.label}
                         </span>
                       </div>
-                      <span className="text-[10px] font-semibold text-cyan-400 uppercase tracking-wider">
-                        AI Stack Fit
-                      </span>
                     </div>
 
-                    <Link
-                      href={`/jobs/${job.id}`}
-                      className="glass-button-primary px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1.5"
-                    >
-                      <span>Tailor & Auto-Fill</span>
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      {applyLink && (
+                        <a
+                          href={applyLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 hover:text-white border border-slate-700 transition-colors flex items-center gap-1.5"
+                          title="Open original job posting"
+                        >
+                          <span>View Job</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+
+                      <Link
+                        href={`/jobs/${encodeURIComponent(job.id)}`}
+                        className="glass-button-primary px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1.5"
+                      >
+                        <span>Tailor Resume</span>
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
                   </div>
                 </div>
               );
@@ -441,52 +653,44 @@ function JobsExplorerContent() {
         )}
       </div>
 
-      {/* Sync Custom Company Board Modal */}
+      {/* Live Sync Search Modal */}
       {showSyncModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="glass-panel max-w-md w-full rounded-2xl p-6 border border-slate-700 space-y-5 animate-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <RefreshCw className="w-4 h-4 text-indigo-400" />
-                <h2 className="text-base font-bold text-white">Sync Connectors & Career Feeds</h2>
+                <h2 className="text-base font-bold text-white">Live Search Across Adzuna &amp; Jooble</h2>
               </div>
               <button onClick={() => setShowSyncModal(false)} className="text-slate-400 hover:text-white text-xs">✕</button>
             </div>
 
             <form onSubmit={handleSyncSubmit} className="space-y-4 text-xs">
               <div className="space-y-1.5">
-                <label className="text-slate-300 font-semibold">Source Connector</label>
+                <label className="text-slate-300 font-semibold">Source API</label>
                 <select
                   value={syncPlatform}
                   onChange={e => setSyncPlatform(e.target.value)}
                   className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-indigo-500"
                 >
-                  <option value="ALL">🌟 ALL Connectors (Global Concurrent Sync)</option>
-                  <option value="GREENHOUSE">Greenhouse (boards-api.greenhouse.io)</option>
-                  <option value="LEVER">Lever (api.lever.co/v0/postings)</option>
-                  <option value="ASHBY">Ashby (api.ashbyhq.com)</option>
-                  <option value="WORKABLE">Workable (apply.workable.com)</option>
-                  <option value="WELLFOUND">Wellfound (AngelList Talent)</option>
-                  <option value="INTERNSHALA">Internshala (Early Careers & Internships)</option>
-                  <option value="HANDSHAKE">Handshake (University Networks)</option>
-                  <option value="INDEED">Indeed (Global Job Search)</option>
-                  <option value="LINKEDIN">LinkedIn (Public Career Opportunities)</option>
-                  <option value="CAREER_PAGES">Direct Company Career Pages</option>
+                  <option value="ALL">🌟 ALL Sources (Adzuna + Jooble)</option>
+                  <option value="ADZUNA">Adzuna API</option>
+                  <option value="JOOBLE">Jooble API</option>
                 </select>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-slate-300 font-semibold">Search Keywords / Company Slug</label>
+                <label className="text-slate-300 font-semibold">Search Query / Job Role / Location</label>
                 <input
                   type="text"
-                  placeholder="e.g. razorpay, figma, zepto, stripe, fullstack, python"
-                  value={syncCompanySlug}
-                  onChange={e => setSyncCompanySlug(e.target.value)}
+                  placeholder="e.g. Python, Data Analyst, React, Full Stack, Bengaluru"
+                  value={syncQuery}
+                  onChange={e => setSyncQuery(e.target.value)}
                   className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   required
                 />
                 <p className="text-[11px] text-slate-500">
-                  Enter target company name, ATS board slug, or job role keywords.
+                  Queries real-time job openings directly from Adzuna and Jooble APIs.
                 </p>
               </div>
 
@@ -510,7 +714,7 @@ function JobsExplorerContent() {
                   className="glass-button-primary px-5 py-2 rounded-xl text-white font-semibold disabled:opacity-50 flex items-center gap-2"
                 >
                   {isSyncing && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{isSyncing ? 'Ingesting...' : 'Start Ingestion'}</span>
+                  <span>{isSyncing ? 'Searching APIs...' : 'Search Live APIs'}</span>
                 </button>
               </div>
             </form>
@@ -527,7 +731,7 @@ export default function JobsExplorerPage() {
       fallback={
         <div className="p-16 text-center text-slate-400 space-y-3">
           <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin mx-auto" />
-          <p className="text-xs font-medium font-mono">Loading Job Explorer &amp; AI Recommendations...</p>
+          <p className="text-xs font-medium font-mono">Loading Real Jobs from Adzuna &amp; Jooble...</p>
         </div>
       }
     >

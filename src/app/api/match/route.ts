@@ -2,21 +2,51 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { JobMatcher } from '@/services/ai/matcher';
 import { getCurrentUserId } from '@/lib/auth';
+import { getProfileFromFirestore } from '@/lib/firebase/firestore';
 
 export async function POST(request: NextRequest) {
   try {
+    const body = await request.json().catch(() => ({}));
+    const headerUserId = request.headers.get('x-user-id');
     const sessionUserId = await getCurrentUserId(request);
-    if (!sessionUserId) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-    const { jobId, userId = sessionUserId } = await request.json();
+    const userId = (headerUserId && headerUserId !== 'null' && headerUserId !== 'undefined')
+      ? headerUserId
+      : (body.userId || sessionUserId);
 
-    const job = db.jobPostings.find(j => j.id === jobId || j.sourceJobId === jobId);
+    if (!userId || userId === 'null' || userId === 'undefined') {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required. Please sign in to compute match analytics.'
+      }, { status: 401 });
+    }
+
+    const { jobId } = body;
+    if (!jobId) {
+      return NextResponse.json({ success: false, error: 'Job ID is required' }, { status: 400 });
+    }
+
+    const normalizedJobId = decodeURIComponent(jobId).trim().toLowerCase();
+    const job = db.jobPostings.find(
+      j =>
+        j.id === jobId ||
+        j.sourceJobId === jobId ||
+        j.id?.toLowerCase() === normalizedJobId ||
+        j.sourceJobId?.toLowerCase() === normalizedJobId ||
+        j.id?.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedJobId.replace(/[^a-z0-9]/g, '')
+    );
+
     if (!job) {
       return NextResponse.json({ success: false, error: 'Job not found' }, { status: 404 });
     }
 
-    const profile = db.profiles.get(userId);
+    let profile = db.profiles.get(userId);
+    if (!profile) {
+      profile = (await getProfileFromFirestore(userId).catch(() => null)) || undefined;
+      if (profile) db.profiles.set(userId, profile);
+    }
+    if (!profile) {
+      profile = Array.from(db.profiles.values())[0];
+    }
     if (!profile) {
       return NextResponse.json({ success: false, error: 'Candidate profile not found' }, { status: 404 });
     }

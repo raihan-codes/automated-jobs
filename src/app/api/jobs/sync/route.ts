@@ -17,22 +17,22 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const platform = (body.platform || 'ALL') as string;
-    const companySlug = body.companySlug || 'tech';
+    const searchTarget = body.companySlug || body.query || 'software engineer';
 
     if (platform === 'ALL') {
-      const result = await ingestionService.syncAllSources(companySlug);
+      const result = await ingestionService.syncAllSources(searchTarget);
       return NextResponse.json({
         success: true,
-        message: `Global Sync Completed: Discovered & updated ${result.totalSynced} opportunities across 10 enabled connectors with cross-source deduplication.`,
+        message: `Live Sync Completed: Discovered & updated ${result.totalSynced} real opportunities from Adzuna & Jooble APIs with cross-source deduplication.`,
         result
       });
     }
 
-    const result = await ingestionService.syncCompanyJobs(platform as JobPlatform, companySlug);
+    const result = await ingestionService.syncCompanyJobs(platform as JobPlatform, searchTarget);
 
     return NextResponse.json({
       success: true,
-      message: `Successfully synced ${result.totalFetched} jobs (${result.newJobsCount} new, ${result.updatedJobsCount} updated) from ${platform} for ${companySlug}.`,
+      message: `Successfully synced ${result.totalFetched} real jobs (${result.newJobsCount} new, ${result.updatedJobsCount} updated) from ${platform} for "${searchTarget}".`,
       result
     });
   } catch (error: any) {

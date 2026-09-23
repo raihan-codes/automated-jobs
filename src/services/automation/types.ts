@@ -12,6 +12,7 @@ export interface FormInspectionResult {
 }
 
 export interface AutomationExecutionResult {
+  id?: string;
   success: boolean;
   status: 'WAITING_FOR_APPROVAL' | 'APPLICATION_READY' | 'FAILED';
   fields: ApplicationFormField[];

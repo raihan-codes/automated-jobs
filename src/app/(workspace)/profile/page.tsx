@@ -217,7 +217,10 @@ export default function CandidateProfilePage() {
     if (job.salaryMin) {
       return `₹${(job.salaryMin / 100000).toFixed(0)} LPA`;
     }
-    return 'Competitive';
+    if (job.salaryMax) {
+      return `Up to ₹${(job.salaryMax / 100000).toFixed(0)} LPA`;
+    }
+    return 'Salary not disclosed';
   };
 
   if (loading || !profile) {

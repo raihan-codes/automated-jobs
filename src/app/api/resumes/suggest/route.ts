@@ -3,12 +3,12 @@ import { db } from '@/lib/db';
 import { JobMatcher } from '@/services/ai/matcher';
 import { ingestionService } from '@/services/ingestion/sync-runner';
 import { getProfileFromFirestore } from '@/lib/firebase/firestore';
-import { CandidateProfileData, JobPlatform } from '@/types';
+import { CandidateProfileData } from '@/types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// Max execution time: 60s (live sync can be slow)
+// Max execution time: 60s
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     body = await request.json();
   } catch {}
 
-  const userId = body.userId || headerUserId || 'user_alex_chen';
+  const userId = body.userId || headerUserId || 'user_raihan_molla';
 
   // ── 1. Load Candidate Profile ──────────────────────────────────────────────
   let profile: CandidateProfileData | null | undefined = db.profiles.get(userId);
@@ -31,7 +31,6 @@ export async function POST(request: Request) {
   }
 
   // ── 2. Determine Search Keywords from Profile ──────────────────────────────
-  // Derive smart search terms from desired titles + top skills
   const keywordParts: string[] = [];
 
   if (profile.desiredTitles && profile.desiredTitles.length > 0) {
@@ -45,23 +44,12 @@ export async function POST(request: Request) {
 
   const searchKeyword = keywordParts.length > 0 ? keywordParts[0] : (topSkills[0] || 'software engineer');
 
-  // ── 3. Live Job Portal Sync ────────────────────────────────────────────────
-  // Concurrently sync top platforms most likely to have relevant roles
-  const platformsToSync: JobPlatform[] = ['GREENHOUSE', 'LEVER', 'ASHBY', 'INTERNSHALA', 'WELLFOUND'];
-  const syncKeywords = [
-    searchKeyword,
-    ...(profile.yearsOfExperience <= 2 ? ['intern', 'internship'] : [])
-  ];
+  // ── 3. Live Job Portal Search across Adzuna + Jooble ────────────────────────
+  await ingestionService.searchRealJobs(profile).catch(err => {
+    console.warn('[suggest] Error searching real jobs:', err.message);
+  });
 
-  await Promise.allSettled(
-    platformsToSync.flatMap(platform =>
-      syncKeywords.slice(0, 2).map(kw =>
-        ingestionService.syncCompanyJobs(platform, kw).catch(() => null)
-      )
-    )
-  );
-
-  // ── 4. Match ALL Jobs Against This Candidate ───────────────────────────────
+  // ── 4. Match ALL Genuine Jobs Against This Candidate ───────────────────────
   const matchResults = await Promise.all(
     db.jobPostings.map(async job => {
       // Check in-memory cache first
@@ -86,7 +74,6 @@ export async function POST(request: Request) {
         isDismissed: false,
         createdAt: new Date().toISOString()
       };
-      // Avoid duplicates
       const existingIdx = db.matches.findIndex(m => m.jobPostingId === job.id && m.userId === userId);
       if (existingIdx >= 0) {
         db.matches[existingIdx] = matchRecord;
@@ -102,9 +89,8 @@ export async function POST(request: Request) {
   const suggestions = matchResults
     .filter(r => r.matchResult.hardFilterPassed)
     .sort((a, b) => b.matchResult.overallScore - a.matchResult.overallScore)
-    .slice(0, 20)
+    .slice(0, 25)
     .map(({ job, matchResult, isStarred }) => ({
-      // Job core info
       id: job.id,
       company: job.company,
       companyLogo: job.companyLogo,

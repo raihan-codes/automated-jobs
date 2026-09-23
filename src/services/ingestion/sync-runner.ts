@@ -1,33 +1,17 @@
-// Global Ingestion Registry & Multi-Source Sync Engine
+// Global Ingestion Registry & Real Job Search Engine (Adzuna + Jooble ONLY)
 import { JobSourceAdapter, IngestionResult, IngestionFilterOptions, ConnectorMetadata } from './types';
-import { GreenhouseAdapter } from './greenhouse';
-import { LeverAdapter } from './lever';
-import { AshbyAdapter } from './ashby';
-import { WorkableAdapter } from './workable';
-import { WellfoundAdapter } from './wellfound';
-import { InternshalaAdapter } from './internshala';
-import { HandshakeAdapter } from './handshake';
-import { IndeedAdapter } from './indeed';
-import { LinkedInAdapter } from './linkedin';
-import { CareerPagesAdapter } from './career-pages';
+import { AdzunaAdapter } from './adzuna';
+import { JoobleAdapter } from './jooble';
 import { JobDeduplicator } from './deduplicator';
 import { db, StoredJobPosting } from '../../lib/db';
-import { JobPlatform, NormalizedJobPosting } from '../../types';
+import { JobPlatform, NormalizedJobPosting, CandidateProfileData } from '../../types';
 
 export class IngestionService {
   private adapters: Map<JobPlatform, JobSourceAdapter> = new Map();
 
   constructor() {
-    this.registerAdapter(new GreenhouseAdapter());
-    this.registerAdapter(new LeverAdapter());
-    this.registerAdapter(new AshbyAdapter());
-    this.registerAdapter(new WorkableAdapter());
-    this.registerAdapter(new WellfoundAdapter());
-    this.registerAdapter(new InternshalaAdapter());
-    this.registerAdapter(new HandshakeAdapter());
-    this.registerAdapter(new IndeedAdapter());
-    this.registerAdapter(new LinkedInAdapter());
-    this.registerAdapter(new CareerPagesAdapter());
+    this.registerAdapter(new AdzunaAdapter());
+    this.registerAdapter(new JoobleAdapter());
   }
 
   public registerAdapter(adapter: JobSourceAdapter) {
@@ -47,10 +31,141 @@ export class IngestionService {
   }
 
   /**
-   * Syncs jobs across ALL registered platforms simultaneously with error isolation and deduplication
+   * Searches REAL jobs across Adzuna + Jooble concurrently based on query or Candidate Profile.
+   * Cross-source deduplication, error isolation, and zero mock data generation.
+   */
+  public async searchRealJobs(
+    queryOrProfile: string | CandidateProfileData,
+    tenantId: string = 'tenant_prod_enterprise_1',
+    options?: IngestionFilterOptions
+  ): Promise<NormalizedJobPosting[]> {
+    let searchQueries: string[] = [];
+    let locationFilter: string | undefined = undefined;
+
+    if (typeof queryOrProfile === 'string') {
+      const q = queryOrProfile.trim();
+      if (q) searchQueries.push(q);
+    } else if (queryOrProfile && typeof queryOrProfile === 'object') {
+      const profile = queryOrProfile;
+      // Extract target titles
+      if (profile.desiredTitles && profile.desiredTitles.length > 0) {
+        searchQueries.push(...profile.desiredTitles.slice(0, 2));
+      }
+      // Extract top technical skills
+      const topSkills = (profile.skills || [])
+        .slice(0, 3)
+        .map(s => typeof s === 'string' ? s : s.name);
+      if (topSkills.length > 0) {
+        searchQueries.push(topSkills.join(' '));
+      }
+      if (profile.location) {
+        locationFilter = profile.location;
+      }
+    }
+
+    if (searchQueries.length === 0) {
+      searchQueries = ['Software Engineer', 'Developer'];
+    }
+
+    // Combine distinct search keywords
+    const uniqueQueries = Array.from(new Set(searchQueries)).slice(0, 3);
+    const platforms: JobPlatform[] = ['ADZUNA', 'JOOBLE'];
+
+    const searchPromises: Promise<NormalizedJobPosting[]>[] = [];
+
+    for (const platform of platforms) {
+      const adapter = this.getAdapter(platform);
+      if (!adapter) continue;
+
+      for (const query of uniqueQueries) {
+        searchPromises.push(
+          adapter.fetchJobs(query, {
+            ...options,
+            query: locationFilter || options?.query
+          }).catch(err => {
+            console.warn(`[IngestionService] Error fetching from ${platform} for "${query}":`, err.message);
+            return [];
+          })
+        );
+      }
+    }
+
+    const settledResults = await Promise.allSettled(searchPromises);
+    const allFetchedJobs: NormalizedJobPosting[] = [];
+
+    for (const res of settledResults) {
+      if (res.status === 'fulfilled' && Array.isArray(res.value)) {
+        allFetchedJobs.push(...res.value);
+      }
+    }
+
+    // Deduplicate and insert into runtime memory store
+    const deduplicatedList: NormalizedJobPosting[] = [];
+
+    for (const job of allFetchedJobs) {
+      const fingerprint = JobDeduplicator.generateFingerprint(job);
+      const crossSourceKey = JobDeduplicator.generateCrossSourceKey(job);
+
+      // Check if already in current search batch
+      const existingInBatchIdx = deduplicatedList.findIndex(
+        j => JobDeduplicator.generateFingerprint(j) === fingerprint ||
+             (JobDeduplicator.generateCrossSourceKey(j) === crossSourceKey && j.company.toLowerCase() === job.company.toLowerCase())
+      );
+
+      if (existingInBatchIdx >= 0) {
+        const existing = deduplicatedList[existingInBatchIdx];
+        deduplicatedList[existingInBatchIdx] = JobDeduplicator.mergePostings(existing, job);
+      } else {
+        deduplicatedList.push(job);
+      }
+
+      // Sync with global runtime store
+      const exactDbIdx = db.jobPostings.findIndex(
+        p => p.fingerprint === fingerprint || (p.sourcePlatform === job.sourcePlatform && p.sourceJobId === job.sourceJobId)
+      );
+      const crossDbIdx = db.jobPostings.findIndex(
+        p => JobDeduplicator.generateCrossSourceKey(p) === crossSourceKey && p.company.toLowerCase() === job.company.toLowerCase()
+      );
+
+      if (exactDbIdx >= 0) {
+        const existing = db.jobPostings[exactDbIdx];
+        db.jobPostings[exactDbIdx] = {
+          ...JobDeduplicator.mergePostings(existing, job),
+          id: existing.id,
+          tenantId,
+          fingerprint,
+          lastSyncedAt: new Date().toISOString()
+        };
+      } else if (crossDbIdx >= 0) {
+        const existing = db.jobPostings[crossDbIdx];
+        db.jobPostings[crossDbIdx] = {
+          ...JobDeduplicator.mergePostings(existing, job),
+          id: existing.id,
+          tenantId,
+          fingerprint: existing.fingerprint,
+          lastSyncedAt: new Date().toISOString()
+        };
+      } else {
+        const newPosting: StoredJobPosting = {
+          ...job,
+          id: `job_${job.sourcePlatform.toLowerCase()}_${job.sourceJobId.replace(/[^a-z0-9_-]/gi, '')}`,
+          tenantId,
+          fingerprint,
+          foundOnSources: job.foundOnSources || [job.sourcePlatform],
+          lastSyncedAt: new Date().toISOString()
+        };
+        db.jobPostings.unshift(newPosting);
+      }
+    }
+
+    return deduplicatedList;
+  }
+
+  /**
+   * Syncs jobs across ALL registered platforms (Adzuna + Jooble)
    */
   public async syncAllSources(
-    searchTarget: string = 'tech',
+    searchTarget: string = 'software engineer',
     tenantId: string = 'tenant_prod_enterprise_1',
     options?: IngestionFilterOptions
   ): Promise<{ totalSynced: number; platformResults: IngestionResult[] }> {
@@ -78,29 +193,29 @@ export class IngestionService {
   }
 
   /**
-   * Runs sync for a specific target company / query and platform
+   * Runs sync for a specific platform (ADZUNA or JOOBLE)
    */
   public async syncCompanyJobs(
     platform: JobPlatform,
-    companySlug: string,
+    companyOrKeyword: string,
     tenantId: string = 'tenant_prod_enterprise_1',
     options?: IngestionFilterOptions
   ): Promise<IngestionResult> {
     const adapter = this.getAdapter(platform);
     if (!adapter) {
-      throw new Error(`Unsupported platform adapter: ${platform}`);
+      throw new Error(`Unsupported platform adapter: ${platform}. Only ADZUNA and JOOBLE are supported.`);
     }
 
     const startTime = new Date();
     let normalizedList: NormalizedJobPosting[] = [];
-    
+
     try {
-      normalizedList = await adapter.fetchJobs(companySlug, options);
+      normalizedList = await adapter.fetchJobs(companyOrKeyword, options);
     } catch (err: any) {
       console.warn(`[IngestionService] Connector error for ${platform}:`, err.message);
       return {
         sourcePlatform: platform,
-        company: companySlug,
+        company: companyOrKeyword,
         totalFetched: 0,
         newJobsCount: 0,
         updatedJobsCount: 0,
@@ -110,7 +225,7 @@ export class IngestionService {
         syncedAt: startTime
       };
     }
-    
+
     let newJobsCount = 0;
     let updatedJobsCount = 0;
     let skippedDuplicatesCount = 0;
@@ -119,12 +234,10 @@ export class IngestionService {
       const fingerprint = JobDeduplicator.generateFingerprint(job);
       const crossSourceKey = JobDeduplicator.generateCrossSourceKey(job);
 
-      // 1. Exact platform duplicate check
       const exactIdx = db.jobPostings.findIndex(
         p => p.fingerprint === fingerprint || (p.sourcePlatform === job.sourcePlatform && p.sourceJobId === job.sourceJobId)
       );
 
-      // 2. Cross-platform semantic match check (e.g. same job on LinkedIn + Indeed + Greenhouse)
       const crossIdx = db.jobPostings.findIndex(
         p => JobDeduplicator.generateCrossSourceKey(p) === crossSourceKey && p.company.toLowerCase() === job.company.toLowerCase()
       );
@@ -145,7 +258,6 @@ export class IngestionService {
           skippedDuplicatesCount++;
         }
       } else if (crossIdx >= 0) {
-        // Cross-platform merge!
         const existing = db.jobPostings[crossIdx];
         const merged = JobDeduplicator.mergePostings(existing, job);
         db.jobPostings[crossIdx] = {
@@ -157,10 +269,9 @@ export class IngestionService {
         };
         updatedJobsCount++;
       } else {
-        // Insert new job posting
         const newPosting: StoredJobPosting = {
           ...job,
-          id: `job_${platform.toLowerCase()}_${job.company.toLowerCase().replace(/[^a-z0-9]/g, '')}_${job.sourceJobId}`,
+          id: `job_${platform.toLowerCase()}_${job.sourceJobId.replace(/[^a-z0-9_-]/gi, '')}`,
           tenantId,
           fingerprint,
           foundOnSources: job.foundOnSources || [job.sourcePlatform],
@@ -179,7 +290,7 @@ export class IngestionService {
       resourceType: 'JobSource',
       details: {
         platform,
-        companySlug,
+        companyOrKeyword,
         totalFetched: normalizedList.length,
         newJobsCount,
         updatedJobsCount,
@@ -190,7 +301,7 @@ export class IngestionService {
 
     return {
       sourcePlatform: platform,
-      company: companySlug,
+      company: companyOrKeyword,
       totalFetched: normalizedList.length,
       newJobsCount,
       updatedJobsCount,

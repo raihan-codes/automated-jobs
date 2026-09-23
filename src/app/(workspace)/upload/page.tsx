@@ -306,17 +306,91 @@ export default function ResumeUploadPage() {
 
   const formatSalary = (job: any) => {
     if (job.salaryMin && job.salaryMax) {
-      const minLPA = (job.salaryMin / 100000).toFixed(0);
-      const maxLPA = (job.salaryMax / 100000).toFixed(0);
-      return `₹${minLPA} - ₹${maxLPA} LPA`;
+      if (job.salaryCurrency === 'INR') {
+        const minLPA = (job.salaryMin / 100000).toFixed(1).replace(/\.0$/, '');
+        const maxLPA = (job.salaryMax / 100000).toFixed(1).replace(/\.0$/, '');
+        return `₹${minLPA} - ₹${maxLPA} LPA`;
+      }
+      return `${job.salaryCurrency || '$'} ${job.salaryMin.toLocaleString()} - ${job.salaryMax.toLocaleString()}`;
     }
     if (job.salaryMin) {
-      return `₹${(job.salaryMin / 100000).toFixed(0)} LPA`;
+      if (job.salaryCurrency === 'INR') {
+        const minLPA = (job.salaryMin / 100000).toFixed(1).replace(/\.0$/, '');
+        return `₹${minLPA} LPA`;
+      }
+      return `${job.salaryCurrency || '$'} ${job.salaryMin.toLocaleString()}`;
     }
-    return 'Competitive';
+    if (job.salaryMax) {
+      if (job.salaryCurrency === 'INR') {
+        const maxLPA = (job.salaryMax / 100000).toFixed(1).replace(/\.0$/, '');
+        return `Up to ₹${maxLPA} LPA`;
+      }
+      return `Up to ${job.salaryCurrency || '$'} ${job.salaryMax.toLocaleString()}`;
+    }
+    return 'Salary not disclosed';
+  };
+
+  const getMatchTierInfo = (score: number) => {
+    if (score >= 90) {
+      return {
+        label: 'Excellent Match',
+        badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+        scoreColor: 'text-emerald-400'
+      };
+    }
+    if (score >= 80) {
+      return {
+        label: 'Strong Match',
+        badgeClass: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+        scoreColor: 'text-indigo-400'
+      };
+    }
+    if (score >= 70) {
+      return {
+        label: 'Good Match',
+        badgeClass: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+        scoreColor: 'text-cyan-400'
+      };
+    }
+    if (score >= 60) {
+      return {
+        label: 'Moderate Match',
+        badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+        scoreColor: 'text-amber-400'
+      };
+    }
+    if (score >= 40) {
+      return {
+        label: 'Partial Match',
+        badgeClass: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+        scoreColor: 'text-orange-400'
+      };
+    }
+    return {
+      label: 'Low Match',
+      badgeClass: 'bg-slate-700/50 text-slate-300 border-slate-600',
+      scoreColor: 'text-slate-400'
+    };
+  };
+
+  const formatPostedTime = (dateStr?: string | Date) => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      const diffMs = Date.now() - date.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays === 0) return 'Posted today';
+      if (diffDays === 1) return 'Posted 1 day ago';
+      if (diffDays < 30) return `Posted ${diffDays} days ago`;
+      const diffMonths = Math.floor(diffDays / 30);
+      return `Posted ${diffMonths} ${diffMonths === 1 ? 'month' : 'months'} ago`;
+    } catch {
+      return '';
+    }
   };
 
   const filteredRecommendations = recommendations.filter(job => {
+    if (job.matchScore === 0) return false;
     if (filterType === 'INTERNSHIPS') return job.employmentType === 'INTERNSHIP';
     if (filterType === 'JOBS') return job.employmentType !== 'INTERNSHIP';
     return true;
@@ -639,73 +713,185 @@ export default function ResumeUploadPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
-              {filteredRecommendations.map((job) => (
-                <div
-                  key={job.id}
-                  className="glass-panel-interactive p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6"
-                >
-                  <div className="space-y-2 flex-1">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-800/90 border border-slate-700 flex items-center justify-center p-2 shrink-0">
-                        {job.companyLogo ? (
-                          <img src={job.companyLogo} alt={job.company} className="w-full h-full object-contain" />
-                        ) : (
-                          <Building2 className="w-6 h-6 text-slate-400" />
+            {filteredRecommendations.length === 0 ? (
+              <div className="glass-panel p-8 rounded-2xl text-center space-y-2">
+                <Compass className="w-8 h-8 text-slate-500 mx-auto" />
+                <h3 className="text-sm font-semibold text-white">No more recent matching jobs were found.</h3>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                  Try broadening your profile skills or searching directly in the Jobs Explorer with different keywords.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {filteredRecommendations.map((job) => {
+                  const applyLink = job.applicationUrl || job.sourceUrl || job.canonicalUrl;
+                  const tierInfo = getMatchTierInfo(job.matchScore || 0);
+                  const matchedSkillsList = job.matchResult?.matchedSkills || [];
+                  const missingSkillsList = job.matchResult?.missingSkills || [];
+                  const postedTime = formatPostedTime(job.postedAt);
+                  const hasRealSalary = Boolean(job.salaryMin || job.salaryMax);
+
+                  const daysOld = typeof job.daysOld === 'number'
+                    ? job.daysOld
+                    : Math.max(0, (Date.now() - new Date(job.postedAt).getTime()) / (1000 * 60 * 60 * 24));
+
+                  return (
+                    <div
+                      key={job.id}
+                      className="glass-panel-interactive p-5 rounded-2xl flex flex-col md:flex-row md:items-start justify-between gap-6"
+                    >
+                      <div className="space-y-3 flex-1">
+                        <div className="flex items-start gap-3">
+                          <div className="w-11 h-11 rounded-xl bg-slate-800/90 border border-slate-700 flex items-center justify-center p-2 shrink-0">
+                            {job.companyLogo ? (
+                              <img src={job.companyLogo} alt={job.company} className="w-full h-full object-contain" />
+                            ) : (
+                              <Building2 className="w-6 h-6 text-slate-400" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Link href={`/jobs/${encodeURIComponent(job.id)}`} className="text-base font-bold text-white hover:text-indigo-300 transition-colors">
+                                {job.title}
+                              </Link>
+                              <span className={`text-[10px] px-2 py-0.5 rounded font-semibold border ${
+                                job.sourcePlatform === 'ADZUNA'
+                                  ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/30'
+                                  : 'bg-amber-950/60 text-amber-300 border-amber-500/30'
+                              }`}>
+                                Source: {job.sourcePlatform === 'ADZUNA' ? 'Adzuna' : 'Jooble'}
+                              </span>
+                              {job.employmentType === 'INTERNSHIP' ? (
+                                <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                                  INTERNSHIP
+                                </span>
+                              ) : (
+                                <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-slate-800 text-slate-300 border border-slate-700">
+                                  FULL-TIME
+                                </span>
+                              )}
+                              {daysOld <= 7 ? (
+                                <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                  🔥 Highly Recent
+                                </span>
+                              ) : daysOld <= 30 ? (
+                                <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                  ⚡ Recent
+                                </span>
+                              ) : (
+                                <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                  ⏳ Older
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2.5 text-xs text-slate-400 mt-1 flex-wrap">
+                              <span className="font-semibold text-slate-200">{job.company}</span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3.5 h-3.5 text-slate-500" /> {job.location}
+                              </span>
+                              <span>•</span>
+                              {hasRealSalary ? (
+                                <span className="text-emerald-400 font-semibold font-mono">
+                                  {formatSalary(job)}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 font-normal">
+                                  {formatSalary(job)}
+                                </span>
+                              )}
+                              {postedTime && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-slate-400">{postedTime}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Matched & Missing Skills Display */}
+                        {matchedSkillsList.length > 0 && (
+                          <div className="space-y-1">
+                            <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+                              Matched Skills:
+                            </span>
+                            <div className="flex flex-wrap gap-1.5 items-center">
+                              {matchedSkillsList.map((skill: string, idx: number) => (
+                                <span
+                                  key={idx}
+                                  className="px-2 py-0.5 rounded-md bg-emerald-950/50 text-emerald-300 border border-emerald-500/30 text-[11px] font-medium"
+                                >
+                                  ✓ {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {missingSkillsList.length > 0 && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-semibold text-amber-400/90 uppercase tracking-wider">
+                              Missing / Less-matched:
+                            </span>
+                            <div className="flex flex-wrap gap-1.5 items-center">
+                              {missingSkillsList.slice(0, 4).map((skill: string, idx: number) => (
+                                <span
+                                  key={idx}
+                                  className="px-2 py-0.5 rounded-md bg-amber-950/30 text-amber-300/80 border border-amber-500/20 text-[10px]"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Why Match Explanation */}
+                        {job.matchResult?.whyMatchReason && (
+                          <p className="text-xs text-slate-300 bg-slate-900/90 p-3 rounded-xl border border-slate-800 leading-relaxed">
+                            <strong className="text-indigo-300">Match Insights: </strong>
+                            {job.matchResult.whyMatchReason}
+                          </p>
                         )}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Link href={`/jobs/${job.id}`} className="text-base font-bold text-white hover:text-indigo-300 transition-colors">
-                            {job.title}
-                          </Link>
-                          <span className="text-[10px] px-2 py-0.5 rounded font-mono font-medium bg-slate-800 text-slate-300 border border-slate-700">
-                            {job.sourcePlatform}
-                          </span>
-                          {job.employmentType === 'INTERNSHIP' && (
-                            <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                              INTERNSHIP
-                            </span>
-                          )}
+
+                      <div className="flex md:flex-col items-center md:items-end justify-between gap-3 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-800">
+                        <div className="flex flex-col items-start md:items-end gap-1">
+                          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${tierInfo.badgeClass}`}>
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span className="text-sm font-extrabold font-mono">{job.matchScore}%</span>
+                            <span className="text-[10px] font-semibold uppercase">{tierInfo.label}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
-                          <span className="font-semibold text-slate-200">{job.company}</span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-slate-500" /> {job.location}
-                          </span>
-                          <span>•</span>
-                          <span className="text-emerald-400 font-semibold font-mono">
-                            {formatSalary(job)}
-                          </span>
+
+                        <div className="flex items-center gap-2">
+                          {applyLink && (
+                            <a
+                              href={applyLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1 transition-colors border border-slate-700"
+                            >
+                              <span>View Job</span>
+                              <ArrowUpRight className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                          <Link
+                            href={`/jobs/${encodeURIComponent(job.id)}`}
+                            className="glass-button-primary px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1.5"
+                          >
+                            <span>Tailor & Apply</span>
+                            <ArrowUpRight className="w-3.5 h-3.5" />
+                          </Link>
                         </div>
                       </div>
                     </div>
-
-                    {job.matchResult && (
-                      <p className="text-xs text-slate-300 bg-slate-900/80 p-3 rounded-xl border border-slate-800 leading-relaxed">
-                        <strong className="text-indigo-300">Why Match:</strong> {job.matchResult.whyMatchReason}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex md:flex-col items-center md:items-end justify-between gap-3 shrink-0">
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30">
-                      <span className="text-sm font-extrabold text-indigo-300">{job.matchScore || 95}%</span>
-                      <span className="text-[10px] text-indigo-400 font-medium">Match</span>
-                    </div>
-
-                    <Link
-                      href={`/jobs/${job.id}`}
-                      className="glass-button-primary px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1.5"
-                    >
-                      <span>Tailor & Apply</span>
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

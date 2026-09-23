@@ -141,36 +141,36 @@ export default function SettingsPage() {
         <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">
-              {user ? user.name.charAt(0).toUpperCase() : 'G'}
+              {user ? (user.displayName || user.email || 'U').charAt(0).toUpperCase() : 'G'}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <p className="text-xs font-bold text-white">{user ? user.name : 'Guest Session'}</p>
+                <p className="text-xs font-bold text-white">{user ? (user.displayName || user.email) : 'Guest Session'}</p>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono">
-                  {user ? `${user.role || 'CANDIDATE'}` : 'ANONYMOUS'}
+                  {user ? 'AUTHENTICATED' : 'ANONYMOUS'}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 font-mono">
-                {user ? user.email : 'Click "Sign In with OAuth" to connect your profile'}
+                {user ? user.email : 'Click "Sign In" to connect your profile'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => signInWithOAuth('google')}
+              onClick={() => signInWithOAuth ? signInWithOAuth('google') : openLoginModal?.()}
               className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition-colors flex items-center gap-1.5"
             >
               <span>Test Google OAuth</span>
             </button>
             <button
-              onClick={() => signInWithOAuth('github')}
+              onClick={() => signInWithOAuth ? signInWithOAuth('github') : openLoginModal?.()}
               className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition-colors flex items-center gap-1.5"
             >
               <span>Test GitHub OAuth</span>
             </button>
             <button
-              onClick={() => signInWithOAuth('demo')}
+              onClick={() => signInWithOAuth ? signInWithOAuth('demo') : openLoginModal?.()}
               className="px-3 py-1.5 rounded-lg bg-indigo-950/70 hover:bg-indigo-900/70 text-indigo-300 border border-indigo-500/30 text-xs font-medium transition-colors flex items-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
