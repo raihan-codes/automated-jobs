@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ AutoApply AI
+# ⚡ Automated Jobs
 
 ### *The Autonomous Career Operating System & Intelligent Job Application Engine*
 
