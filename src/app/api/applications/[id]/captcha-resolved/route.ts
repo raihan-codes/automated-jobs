@@ -3,14 +3,13 @@ import { ATSPlaywrightWorker } from '@/services/automation/ats-playwright-worker
 import { getCurrentUserId } from '@/lib/auth';
 
 /**
- * POST /api/applications/[id]/approve
+ * POST /api/applications/[id]/captcha-resolved
  *
- * Called ONLY after the user explicitly clicks "Approve & Submit".
+ * Called when the user has manually completed the CAPTCHA / anti-bot challenge
+ * in the external application flow. Transitions status to READY_TO_SUBMIT
+ * or AWAITING_USER_APPROVAL.
  *
- * This triggers:
- *   AWAITING_USER_APPROVAL → SUBMITTING → (verifier) → SUBMITTED | SUBMISSION_FAILED | EXTERNAL_CONFIRMATION_REQUIRED
- *
- * NEVER sets SUBMITTED without external ATS confirmation.
+ * Note: Never marks as SUBMITTED merely because CAPTCHA was resolved.
  */
 export async function POST(
   request: NextRequest,
@@ -20,13 +19,12 @@ export async function POST(
     const userId = (await getCurrentUserId(request)) || 'user_raihan_molla';
     const appId = params.id;
 
-    const result = await ATSPlaywrightWorker.submitApplication(appId, userId);
+    const result = await ATSPlaywrightWorker.resolveCaptcha(appId, userId);
 
     return NextResponse.json({
       success: true,
-      finalStatus: result.finalStatus,
-      submissionVerification: result.submissionVerification,
-      message: result.message,
+      status: result.status,
+      message: result.message
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

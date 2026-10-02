@@ -3,14 +3,10 @@ import { ATSPlaywrightWorker } from '@/services/automation/ats-playwright-worker
 import { getCurrentUserId } from '@/lib/auth';
 
 /**
- * POST /api/applications/[id]/approve
+ * POST /api/applications/[id]/user-input
  *
- * Called ONLY after the user explicitly clicks "Approve & Submit".
- *
- * This triggers:
- *   AWAITING_USER_APPROVAL → SUBMITTING → (verifier) → SUBMITTED | SUBMISSION_FAILED | EXTERNAL_CONFIRMATION_REQUIRED
- *
- * NEVER sets SUBMITTED without external ATS confirmation.
+ * Provides missing profile/form values when status is USER_INPUT_REQUIRED.
+ * After values are provided, transitions to AWAITING_USER_APPROVAL.
  */
 export async function POST(
   request: NextRequest,
@@ -19,14 +15,15 @@ export async function POST(
   try {
     const userId = (await getCurrentUserId(request)) || 'user_raihan_molla';
     const appId = params.id;
+    const body = await request.json();
+    const updates = body.fields || {};
 
-    const result = await ATSPlaywrightWorker.submitApplication(appId, userId);
+    const result = await ATSPlaywrightWorker.provideUserInput(appId, userId, updates);
 
     return NextResponse.json({
       success: true,
-      finalStatus: result.finalStatus,
-      submissionVerification: result.submissionVerification,
-      message: result.message,
+      status: result.status,
+      fields: result.fields
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

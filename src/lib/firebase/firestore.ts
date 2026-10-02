@@ -35,6 +35,21 @@ export interface UserApplicationRecord {
   humanReviewNotes?: string;
   approvedAt?: string;
   submittedAt?: string;
+  /**
+   * External ATS confirmation record — persisted to Firestore.
+   * Loaded back into StoredApplication on hydration.
+   */
+  submissionVerification?: {
+    verified: boolean;
+    verificationMethod: string | null;
+    confirmationText: string | null;
+    confirmationId: string | null;
+    confirmationUrl: string | null;
+    submittedAt: string | null;
+    externalDomain: string | null;
+    screenshotPath: string | null;
+    failureReason?: string | null;
+  };
   stage?: string;
   createdAt: string;
   updatedAt: string;
@@ -233,6 +248,10 @@ export async function getUserMatchesFromFirestore(userId: string): Promise<Recor
 
 /**
  * Save application state to Firestore: users/{userId}/applications/{appId}
+ *
+ * NOTE: submissionVerification is always persisted as part of the application
+ * document. On load, if the field is missing (legacy records), a safe
+ * unverified default is supplied by the GET route.
  */
 export async function saveApplicationToFirestore(userId: string, application: any): Promise<boolean> {
   if (!isFirebaseConfigured || !userId || !application.id) return false;

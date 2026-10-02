@@ -3,14 +3,18 @@ import { ATSPlaywrightWorker } from '@/services/automation/ats-playwright-worker
 import { getCurrentUserId } from '@/lib/auth';
 
 /**
- * POST /api/applications/[id]/approve
+ * POST /api/applications/[id]/reverify
  *
- * Called ONLY after the user explicitly clicks "Approve & Submit".
+ * Re-checks the stored submissionVerification evidence for a SUBMITTED application.
  *
- * This triggers:
- *   AWAITING_USER_APPROVAL → SUBMITTING → (verifier) → SUBMITTED | SUBMISSION_FAILED | EXTERNAL_CONFIRMATION_REQUIRED
+ * If the stored evidence is insufficient (no confirmation text, no external URL,
+ * or domain is a job board), the application is downgraded to
+ * EXTERNAL_CONFIRMATION_REQUIRED.
  *
- * NEVER sets SUBMITTED without external ATS confirmation.
+ * This is the backend for the "Re-verify Submission" button in the UI.
+ *
+ * INVARIANT: SUBMITTED status is preserved only if evidence is solid.
+ *            No fabrication. No false positives.
  */
 export async function POST(
   request: NextRequest,
@@ -20,7 +24,7 @@ export async function POST(
     const userId = (await getCurrentUserId(request)) || 'user_raihan_molla';
     const appId = params.id;
 
-    const result = await ATSPlaywrightWorker.submitApplication(appId, userId);
+    const result = await ATSPlaywrightWorker.reVerifySubmission(appId, userId);
 
     return NextResponse.json({
       success: true,

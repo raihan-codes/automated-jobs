@@ -1,5 +1,5 @@
 // Candidate Profile to ATS Form Field Mapper
-import { CandidateProfileData, ApplicationFormField, TailoredResumeContent } from '@/types';
+import { CandidateProfileData, ApplicationFormField, TailoredResumeContent } from '../../types';
 import { FieldClassifier } from './field-classifier';
 
 export class FormPrefillEngine {

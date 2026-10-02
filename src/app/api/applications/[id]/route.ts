@@ -36,13 +36,41 @@ export async function GET(
       );
 
       if (foundInFirestore) {
+        // Build a safe default submissionVerification for legacy records
+        const defaultVerification = {
+          verified: false,
+          verificationMethod: null,
+          confirmationText: null,
+          confirmationId: null,
+          confirmationUrl: null,
+          submittedAt: null,
+          externalDomain: null,
+          screenshotPath: null,
+          failureReason: 'Loaded from legacy record — verification evidence not present.'
+        };
+
+        const storedVerification = foundInFirestore.submissionVerification ?? defaultVerification;
+
+        // INVARIANT: if stored status is SUBMITTED but verification is not
+        // confirmed, downgrade to EXTERNAL_CONFIRMATION_REQUIRED.
+        let resolvedStatus = (foundInFirestore.status as any) || 'AWAITING_USER_APPROVAL';
+        if (resolvedStatus === 'SUBMITTED' && !storedVerification.verified) {
+          resolvedStatus = 'EXTERNAL_CONFIRMATION_REQUIRED';
+          console.warn(
+            `[Hydration] Application ${targetId} was stored as SUBMITTED without ` +
+            `verified=true. Downgrading to EXTERNAL_CONFIRMATION_REQUIRED.`
+          );
+        }
+
         app = {
           ...foundInFirestore,
           fields: foundInFirestore.fields || [],
           automationEngine: foundInFirestore.automationEngine || 'PLAYWRIGHT',
           hasSensitiveQuestions: Boolean(foundInFirestore.hasSensitiveQuestions),
           requiresHumanInput: Boolean(foundInFirestore.requiresHumanInput),
-          stage: (foundInFirestore.stage as any) || 'SUBMITTED',
+          status: resolvedStatus,
+          submissionVerification: storedVerification,
+          stage: resolvedStatus === 'SUBMITTED' ? 'SUBMITTED' : 'PENDING',
           createdAt: foundInFirestore.createdAt || new Date().toISOString(),
           updatedAt: foundInFirestore.updatedAt || new Date().toISOString()
         };
@@ -90,22 +118,31 @@ export async function GET(
       m => (m.jobPostingId === app?.jobPostingId || (job && m.jobPostingId === job.id)) && m.userId === userId
     );
 
+    const auditLogs = db.auditLogs.filter(
+      a =>
+        a.resourceId === app?.id ||
+        a.resourceId === app?.jobPostingId ||
+        a.details?.targetJobId === app?.jobPostingId ||
+        a.details?.applicationId === app?.id
+    );
+
     return NextResponse.json({
       success: true,
       application: {
         ...app,
         job: job || {
-          id: app.jobPostingId,
+          id: app?.jobPostingId,
           title: 'Software Engineer',
           company: 'Hiring Company',
           location: 'Remote',
           sourcePlatform: 'ADZUNA',
           employmentType: 'FULL_TIME',
-          applicationUrl: app.formUrl,
+          applicationUrl: app?.formUrl,
           descriptionRaw: ''
         },
         resume,
-        matchScore: match?.matchResult?.overallScore || 85
+        matchScore: match?.matchResult?.overallScore || 85,
+        auditLogs
       }
     });
   } catch (error: any) {

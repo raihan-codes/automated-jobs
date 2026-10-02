@@ -1,5 +1,5 @@
-import { db, StoredUser } from '@/lib/db';
-import { AuthUser, OAuthProvider, CandidateProfileData } from '@/types';
+import { db, StoredUser } from './db';
+import { AuthUser, OAuthProvider, CandidateProfileData } from '../types';
 export type { OAuthProvider };
 
 export const APP_DEV_URL = 'https://ais-dev-ss5pessumkhmwglkreltsp-49121961165.asia-east1.run.app';

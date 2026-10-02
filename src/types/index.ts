@@ -1,17 +1,90 @@
 // Core Domain Types & State Machines for Automated Jobs
 
+/**
+ * APPLICATION STATE MACHINE
+ * ─────────────────────────────────────────────────────────────────
+ * DISCOVERED             → Job found/matched
+ * RESUME_READY           → Tailored resume generated & verified
+ * AWAITING_USER_APPROVAL → Form prepared; sensitive fields shown to user
+ * SUBMITTING             → User clicked "Approve & Submit"; automation running
+ * SUBMITTED              → ONLY when submissionVerification.verified === true
+ * SUBMISSION_FAILED      → ATS reported error / timeout / blocked
+ * EXTERNAL_CONFIRMATION_REQUIRED → Cannot verify result; user must check manually
+ *
+ * Legacy statuses kept for backward-compat during migration:
+ * MATCHED, SELECTED, APPLICATION_READY, WAITING_FOR_APPROVAL, TRACKING
+ */
 export type ApplicationStatus =
+  // ── Canonical states ──────────────────────────────────────
   | 'DISCOVERED'
+  | 'RESUME_READY'
+  | 'APPLICATION_DETECTED'
+  | 'FILLING_FORM'
+  | 'USER_INPUT_REQUIRED'
+  | 'CAPTCHA_REQUIRED'
+  | 'AWAITING_USER_APPROVAL'
+  | 'READY_TO_SUBMIT'
+  | 'SUBMITTING'
+  | 'SUBMITTED'
+  | 'SUBMISSION_FAILED'
+  | 'EXTERNAL_CONFIRMATION_REQUIRED'
+  // ── Legacy / tracking states (kept for compat) ────────────────
   | 'MATCHED'
   | 'SELECTED'
-  | 'RESUME_READY'
   | 'APPLICATION_READY'
-  | 'WAITING_FOR_APPROVAL'
-  | 'SUBMITTED'
+  | 'WAITING_FOR_APPROVAL'   // alias for AWAITING_USER_APPROVAL
   | 'TRACKING'
   | 'REJECTED'
   | 'INTERVIEWING'
   | 'OFFER';
+
+/**
+ * SubmissionVerification — immutable record of external ATS proof.
+ * applicationStatus = "SUBMITTED"  ONLY when  verified === true.
+ *
+ * NEVER set verified = true based on:
+ *   - HTTP 200 alone
+ *   - Job listing page loading
+ *   - Form fields being populated
+ *   - Submit button being clicked
+ *   - Internal database assumption
+ */
+export interface SubmissionVerification {
+  /** true ONLY when an accepted external confirmation signal was detected */
+  verified: boolean;
+  /**
+   * How verification was achieved, e.g.:
+   *   "page_text_match"  – success phrase found in page text
+   *   "url_pattern"      – URL contains /confirmation or /success
+   *   "confirmation_id"  – unique application reference number extracted
+   *   "success_modal"    – modal with success heading detected
+   *   "manual"           – user manually confirmed via re-verify flow
+   *   null               – not yet verified
+   */
+  verificationMethod: string | null;
+  /** The exact text snippet from the ATS page that proves submission */
+  confirmationText: string | null;
+  /** Application ID / reference number issued by the external ATS */
+  confirmationId: string | null;
+  /** URL of the confirmation/thank-you page on the external ATS */
+  confirmationUrl: string | null;
+  /** ISO timestamp when external confirmation was detected */
+  submittedAt: string | null;
+  /** Hostname of the final external ATS, e.g. "greenhouse.io", "lever.co" */
+  externalDomain: string | null;
+  /** Path to Playwright screenshot of the confirmation page */
+  screenshotPath: string | null;
+  /** Why verification failed or is pending */
+  failureReason?: string | null;
+  /** CAPTCHA detected on page during workflow */
+  captchaDetected?: boolean;
+  /** Type of challenge detected (e.g. 'recaptcha_v2', 'hcaptcha', 'cloudflare_turnstile') */
+  captchaType?: string | null;
+  /** Whether the user manually completed the CAPTCHA */
+  captchaResolved?: boolean;
+  /** Whether manual login / MFA OTP was encountered */
+  mfaDetected?: boolean;
+}
 
 export type JobPlatform =
   | 'ADZUNA'
@@ -32,6 +105,7 @@ export interface CandidateProfileData {
   email: string;
   phone?: string;
   location?: string;
+  address?: string;
   headline?: string;
   summary?: string;
   website?: string;
@@ -39,16 +113,21 @@ export interface CandidateProfileData {
   githubUrl?: string;
   portfolioUrl?: string;
   
-  // Job Search Constraints
+  // Job Search Constraints & Compensation
   desiredTitles: string[];
   preferredLocations: string[];
   remotePreference: RemotePreference;
   minSalary?: number;
-  expectedSalaryLPA?: number; // In Lakhs Per Annum (e.g. 18, 25, 45 LPA)
-  noticePeriod?: 'IMMEDIATE' | '15_DAYS' | '30_DAYS' | '60_DAYS' | '90_DAYS';
+  currentSalaryLPA?: number; // In Lakhs Per Annum (e.g. 18 LPA)
+  currentCTC?: string;        // Explicit string representation (e.g. "₹18,00,000")
+  expectedSalaryLPA?: number; // In Lakhs Per Annum (e.g. 25 LPA)
+  expectedCTC?: string;       // Explicit string representation (e.g. "₹25,00,000")
+  noticePeriod?: 'IMMEDIATE' | '15_DAYS' | '30_DAYS' | '60_DAYS' | '90_DAYS' | string;
   requiresVisa: boolean;
   workAuthorization?: string; // e.g. "Indian Citizen", "No Sponsorship Needed"
   yearsOfExperience: number;
+  relocationPreference?: 'WILLING_TO_RELOCATE' | 'NOT_WILLING' | 'NEGOTIABLE' | boolean;
+  emailAlertPreferences?: boolean;
   
   // Structured Sections
   skills: CandidateSkillData[];
@@ -202,10 +281,29 @@ export interface TailoredResumeContent {
   };
 }
 
+export type FormFieldStatus =
+  | 'AUTO_FILLED'
+  | 'USER_INPUT_REQUIRED'
+  | 'SENSITIVE_REVIEW_REQUIRED'
+  | 'MANUALLY_EDITED'
+  | 'UNSUPPORTED';
+
+export type FormFieldType =
+  | 'text'
+  | 'textarea'
+  | 'select'
+  | 'radio'
+  | 'checkbox'
+  | 'file'
+  | 'number'
+  | 'date'
+  | 'tel'
+  | 'email';
+
 export interface ApplicationFormField {
   fieldKey: string;
   fieldLabel: string;
-  fieldType: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'file';
+  fieldType: FormFieldType;
   fieldValue?: string;
   isSensitive: boolean;
   isFilledByAI: boolean;
@@ -213,6 +311,11 @@ export interface ApplicationFormField {
   confidenceScore: number;
   options?: string[];
   validationError?: string;
+  isRequired?: boolean;
+  status?: FormFieldStatus;
+  category?: 'PERSONAL' | 'CONTACT' | 'COMPENSATION' | 'AUTHORIZATION' | 'EXPERIENCE' | 'PREFERENCE' | 'CUSTOM' | 'CONSENT' | 'FILE';
+  helperText?: string;
+  detectedSelector?: string;
 }
 
 export type OAuthProvider = 'google' | 'github' | 'demo';

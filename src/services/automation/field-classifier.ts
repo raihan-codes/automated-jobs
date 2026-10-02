@@ -1,9 +1,10 @@
 // Sensitive Field Classifier & Guardrail Engine
-import { ApplicationFormField } from '@/types';
+import { ApplicationFormField } from '../../types';
 
 export class FieldClassifier {
   private static sensitiveKeywords = [
-    'salary', 'compensation', 'pay', 'rate', 'expected',
+    'salary', 'compensation', 'pay', 'rate', 'expected', 'ctc',
+    'notice', 'notice period', 'relocate', 'relocation',
     'visa', 'sponsorship', 'authorized', 'citizenship', 'work authorization', 'greencard', 'cpt', 'opt', 'h1b',
     'race', 'gender', 'ethnicity', 'veteran', 'disability', 'sexual orientation',
     'clearance', 'security clearance', 'background check', 'felony', 'convict',

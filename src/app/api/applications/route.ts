@@ -27,8 +27,32 @@ export async function GET(request: NextRequest) {
     const job = db.jobPostings.find(j => j.id === app.jobPostingId || j.sourceJobId === app.jobPostingId);
     const resume = db.resumes.find(r => r.id === app.tailoredResumeId);
     const match = db.matches.find(m => m.jobPostingId === app.jobPostingId && m.userId === userId);
+
+    const storedVerification =
+      app.submissionVerification && typeof app.submissionVerification.verified === 'boolean'
+        ? app.submissionVerification
+        : {
+            verified: false,
+            verificationMethod: null,
+            confirmationText: null,
+            confirmationId: null,
+            confirmationUrl: null,
+            submittedAt: null,
+            externalDomain: null,
+            screenshotPath: null,
+            failureReason: 'No external confirmation record exists for this entry.',
+          };
+
+    let resolvedStatus = app.status;
+    if (resolvedStatus === 'SUBMITTED' && !storedVerification.verified) {
+      resolvedStatus = 'EXTERNAL_CONFIRMATION_REQUIRED';
+    }
+
     return {
       ...app,
+      status: resolvedStatus,
+      submissionVerification: storedVerification,
+      stage: resolvedStatus === 'SUBMITTED' ? 'SUBMITTED' : (app.stage || 'PENDING'),
       job,
       resume,
       matchScore: match?.matchResult?.overallScore || 90
