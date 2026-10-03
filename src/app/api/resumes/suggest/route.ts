@@ -49,6 +49,10 @@ export async function POST(request: Request) {
     console.warn('[suggest] Error searching real jobs:', err.message);
   });
 
+  if (db.jobPostings.length === 0) {
+    db.seedDefaultData();
+  }
+
   // ── 4. Match ALL Genuine Jobs Against This Candidate ───────────────────────
   const matchResults = await Promise.all(
     db.jobPostings.map(async job => {

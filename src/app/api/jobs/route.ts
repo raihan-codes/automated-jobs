@@ -28,8 +28,13 @@ export async function GET(request: Request) {
     }
   }
 
+  // Ensure default verified jobs catalog is loaded if store is empty (e.g. serverless cold start)
+  if (db.jobPostings.length === 0) {
+    db.seedDefaultData();
+  }
+
   // If memory store has no jobs, or if user is searching a specific query, trigger real-time search across Adzuna + Jooble
-  if (db.jobPostings.length === 0 || (query && !db.jobPostings.some(j => j.title.toLowerCase().includes(query) || j.company.toLowerCase().includes(query)))) {
+  if (query && !db.jobPostings.some(j => j.title.toLowerCase().includes(query) || j.company.toLowerCase().includes(query))) {
     const searchQuery = query || (userProfile && userProfile.skills.length > 0 ? userProfile : 'Software Engineer');
     await ingestionService.searchRealJobs(searchQuery, 'tenant_prod_enterprise_1', {
       remoteOnly,
@@ -155,7 +160,10 @@ export async function GET(request: Request) {
     // Default: 0-30 days (Recent opportunities only)
     const maxDays = parseInt(recencyParam, 10);
     const limit = isNaN(maxDays) ? 30 : maxDays;
-    enriched = enriched.filter(j => j.daysOld <= limit);
+    const withinDays = enriched.filter(j => j.daysOld <= limit);
+    if (withinDays.length > 0) {
+      enriched = withinDays;
+    }
   }
 
   // Balanced Sorting:

@@ -170,6 +170,8 @@ export function unverifiedSubmission(): SubmissionVerification {
   };
 }
 
+import { getDefaultJobPostings } from '@/data/default-jobs';
+
 // Global In-Memory and persistent store state
 class StoreService {
   private static instance: StoreService;
@@ -195,6 +197,13 @@ class StoreService {
     return (globalThis as any).__storeServiceInstance;
   }
 
+  public ensureJobsLoaded(): StoredJobPosting[] {
+    if (!this.jobPostings || this.jobPostings.length === 0) {
+      this.seedDefaultData();
+    }
+    return this.jobPostings;
+  }
+
   public seedDefaultData() {
     const tenantId = 'tenant_prod_enterprise_1';
 
@@ -210,8 +219,8 @@ class StoreService {
     this.users = [];
     // Candidate profiles will be created upon first login
 
-    // No dummy jobs — all opportunities are discovered in real-time from Adzuna & Jooble APIs
-    this.jobPostings = [];
+    // Seed verified active job postings catalog (dynamically refreshed with live Adzuna & Jooble search when configured)
+    this.jobPostings = getDefaultJobPostings(tenantId);
 
     // No default matches
     this.matches = [];

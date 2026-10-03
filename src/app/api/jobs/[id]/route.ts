@@ -23,6 +23,10 @@ export async function GET(
   const paramUserId = searchParams.get('userId');
   const userId = paramUserId || headerUserId || 'user_raihan_molla';
 
+  if (db.jobPostings.length === 0) {
+    db.seedDefaultData();
+  }
+
   // 1. Locate the job in the centralized database
   const decodedId = decodeURIComponent(jobId).trim().toLowerCase();
   const job = db.jobPostings.find(

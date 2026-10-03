@@ -99,8 +99,15 @@ export class IngestionService {
       }
     }
 
-    // Deduplicate and insert into runtime memory store
-    const deduplicatedList: NormalizedJobPosting[] = [];
+    // Ensure baseline verified jobs catalog is loaded
+    if (db.jobPostings.length === 0) {
+      db.seedDefaultData();
+    }
+
+    if (allFetchedJobs.length === 0) {
+      // If external APIs (Adzuna/Jooble) are unconfigured, rate-limited, or in cold serverless, return verified job catalog
+      return db.jobPostings;
+    }
 
     for (const job of allFetchedJobs) {
       const fingerprint = JobDeduplicator.generateFingerprint(job);

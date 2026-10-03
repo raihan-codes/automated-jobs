@@ -38,6 +38,10 @@ export async function POST(
     }
     
     // 2. Find associated job posting
+    if (db.jobPostings.length === 0) {
+      db.seedDefaultData();
+    }
+
     const job = db.jobPostings.find(j => 
       j.id === (app?.jobPostingId || targetId) || 
       j.sourceJobId === (app?.jobPostingId || targetId) ||

@@ -25,6 +25,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Job ID is required' }, { status: 400 });
     }
 
+    if (db.jobPostings.length === 0) {
+      db.seedDefaultData();
+    }
+
     const normalizedJobId = decodeURIComponent(jobId).trim().toLowerCase();
     const job = db.jobPostings.find(
       j =>
