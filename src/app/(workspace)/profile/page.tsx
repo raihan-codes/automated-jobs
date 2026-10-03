@@ -87,27 +87,14 @@ export default function CandidateProfilePage() {
     });
 
     try {
-      let res;
-      if (uploadedFile.name.endsWith('.docx') || uploadedFile.name.endsWith('.pdf')) {
-        const formData = new FormData();
-        formData.append('file', uploadedFile);
-        formData.append('userId', activeUserId);
-        res = await fetch('/api/profile/extract-resume', {
-          method: 'POST',
-          headers: { 'x-user-id': activeUserId },
-          body: formData
-        });
-      } else {
-        const text = await uploadedFile.text();
-        res = await fetch('/api/profile/extract-resume', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-user-id': activeUserId
-          },
-          body: JSON.stringify({ text, userId: activeUserId })
-        });
-      }
+      const formData = new FormData();
+      formData.append('file', uploadedFile);
+      formData.append('userId', activeUserId);
+      const res = await fetch('/api/profile/extract-resume', {
+        method: 'POST',
+        headers: { 'x-user-id': activeUserId },
+        body: formData
+      });
 
       const data = await res.json();
 
@@ -296,7 +283,7 @@ export default function CandidateProfilePage() {
                 </span>
               </div>
               <p className="text-xs text-slate-300 mt-1">
-                Drag and drop your <strong>.docx, .pdf, or .txt</strong> resume file here. All fields below will update automatically without needing extra clicks.
+                Drag and drop your <strong>.pdf, .docx, .doc, or .txt</strong> resume file here. All fields below will update automatically without needing extra clicks.
               </p>
             </div>
           </div>
@@ -304,10 +291,10 @@ export default function CandidateProfilePage() {
           <div className="flex items-center gap-3 self-start md:self-auto shrink-0">
             <label className="glass-button-primary px-5 py-2.5 rounded-xl text-xs font-bold text-white cursor-pointer inline-flex items-center gap-2 shadow-lg shadow-indigo-600/20">
               <FileText className="w-4 h-4 text-cyan-400" />
-              <span>{isExtracting ? 'Extracting Resume...' : 'Select Resume (.docx / .pdf / .txt)'}</span>
+              <span>{isExtracting ? 'Extracting Resume...' : 'Select Resume (.pdf / .docx / .doc / .txt)'}</span>
               <input
                 type="file"
-                accept=".docx,.pdf,.txt,.md,.json"
+                accept=".pdf,.docx,.doc,.txt,.rtf,.md,.json"
                 onChange={handleFileInputChange}
                 disabled={isExtracting}
                 className="hidden"

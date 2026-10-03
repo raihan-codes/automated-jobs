@@ -36,19 +36,67 @@ export async function POST(request: Request) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      if (file.name.endsWith('.docx')) {
+      const fileNameLower = (file.name || '').toLowerCase();
+
+      if (fileNameLower.endsWith('.docx')) {
         // Parse .docx using mammoth
-        const docxResult = await mammoth.extractRawText({ buffer });
-        rawText = docxResult.value || '';
-      } else if (file.name.endsWith('.pdf')) {
-        // Parse .pdf using pdf-parse PDFParse
-        const { PDFParse } = require('pdf-parse');
-        const parser = new PDFParse({ data: buffer });
-        const pdfResult = await parser.getText();
-        rawText = pdfResult.text || (pdfResult.pages ? pdfResult.pages.map((p: any) => p.text).join('\n') : '');
-        await parser.destroy();
+        try {
+          const docxResult = await mammoth.extractRawText({ buffer });
+          rawText = docxResult.value || '';
+        } catch (docxErr: any) {
+          console.warn('[extract-resume] Mammoth docx extraction failed:', docxErr.message);
+          // Fallback to text extraction
+          rawText = buffer.toString('utf-8').replace(/[^\x20-\x7E\n\r\t]/g, ' ');
+        }
+      } else if (fileNameLower.endsWith('.pdf')) {
+        // Parse .pdf using pdf-parse with worker initialization
+        try {
+          const { PDFParse } = require('pdf-parse');
+          const { getData } = require('pdf-parse/worker');
+          if (typeof PDFParse.setWorker === 'function') {
+            PDFParse.setWorker(getData());
+          }
+          const parser = new PDFParse({ data: buffer });
+          const pdfResult = await parser.getText();
+          rawText = pdfResult.text || (pdfResult.pages ? pdfResult.pages.map((p: any) => p.text).join('\n') : '');
+          if (typeof parser.destroy === 'function') {
+            await parser.destroy();
+          }
+        } catch (pdfErr: any) {
+          console.warn('[extract-resume] PDFParse failed, trying raw stream extraction fallback:', pdfErr.message);
+          // Fallback: extract printable text streams from PDF buffer
+          const rawBufferStr = buffer.toString('latin1');
+          const textMatches: string[] = [];
+          // Match text within parentheses (text in Tj or TJ operators)
+          const tjMatches = rawBufferStr.match(/\(([^()]{2,})\)\s*(?:Tj|'|")/g);
+          if (tjMatches && tjMatches.length > 0) {
+            for (const m of tjMatches) {
+              const inner = m.replace(/^[^(]*\(/, '').replace(/\)[^)]*$/, '');
+              if (inner.trim().length > 1) {
+                textMatches.push(inner);
+              }
+            }
+          }
+          if (textMatches.length > 5) {
+            rawText = textMatches.join(' ');
+          } else {
+            // Alternative fallback: regex for printable chunks
+            const printable = rawBufferStr.replace(/[^\x20-\x7E\n\r\t]/g, ' ')
+              .replace(/\s{2,}/g, ' ')
+              .trim();
+            if (printable.length >= 20) {
+              rawText = printable;
+            } else {
+              throw pdfErr;
+            }
+          }
+        }
+      } else if (fileNameLower.endsWith('.doc')) {
+        // Legacy Word format (.doc) fallback: extract clean strings from binary stream
+        const textContent = buffer.toString('utf-8').replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s{2,}/g, ' ').trim();
+        rawText = textContent;
       } else {
-        // Plain text / Markdown / JSON fallback
+        // Plain text / Markdown / JSON / RTF fallback
         rawText = buffer.toString('utf-8');
       }
     } else {

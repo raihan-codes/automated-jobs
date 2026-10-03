@@ -129,8 +129,9 @@ export default function ResumeUploadPage() {
     const uploadedFile = e.target.files?.[0];
     if (uploadedFile) {
       setFile(uploadedFile);
-      if (uploadedFile.name.endsWith('.docx') || uploadedFile.name.endsWith('.pdf')) {
-        setRawText(`[Selected File: ${uploadedFile.name} — Parsed server-side via native PDF/DOCX engine]`);
+      const nameLower = uploadedFile.name.toLowerCase();
+      if (nameLower.endsWith('.docx') || nameLower.endsWith('.pdf') || nameLower.endsWith('.doc')) {
+        setRawText(`[Selected File: ${uploadedFile.name} — Parsed server-side via native PDF/DOCX/DOC engine]`);
       } else {
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -156,13 +157,16 @@ export default function ResumeUploadPage() {
 
     try {
       let res;
-      if (file && (file.name.endsWith('.docx') || file.name.endsWith('.pdf'))) {
+      if (file) {
+        const nameLower = file.name.toLowerCase();
         setActivePipelineStep(2);
-        setProcessingStatus(
-          file.name.endsWith('.pdf')
-            ? 'Step 2/7: Reading PDF binary layers via PDFParse...'
-            : 'Step 2/7: Reading Word .docx XML structure via Mammoth...'
-        );
+        if (nameLower.endsWith('.pdf')) {
+          setProcessingStatus('Step 2/7: Reading PDF binary layers via PDFParse...');
+        } else if (nameLower.endsWith('.docx') || nameLower.endsWith('.doc')) {
+          setProcessingStatus('Step 2/7: Reading Word document structure via Mammoth...');
+        } else {
+          setProcessingStatus('Step 2/7: Reading resume document stream...');
+        }
 
         const formData = new FormData();
         formData.append('file', file);
@@ -468,20 +472,20 @@ export default function ResumeUploadPage() {
 
             <div className="space-y-1">
               <h3 className="text-base font-bold text-white">
-                {file ? file.name : 'Upload your Resume (PDF or DOCX)'}
+                {file ? file.name : 'Upload your Resume (PDF, DOCX, DOC, TXT)'}
               </h3>
               <p className="text-xs text-slate-400">
-                Native binary PDF text layer parsing via PDFParse & Word .docx via Mammoth
+                Native binary PDF text layer parsing, Word .docx/.doc, and text documents supported
               </p>
             </div>
 
             <div className="flex items-center justify-center gap-3">
               <label className="glass-button-primary px-5 py-2.5 rounded-xl text-xs font-bold text-white cursor-pointer inline-flex items-center gap-2">
                 <FileText className="w-4 h-4" />
-                <span>Choose Resume File (.pdf / .docx / .txt)</span>
+                <span>Choose Resume File (.pdf / .docx / .doc / .txt)</span>
                 <input
                   type="file"
-                  accept=".pdf,.docx,.txt,.md,.json"
+                  accept=".pdf,.docx,.doc,.txt,.rtf,.md,.json"
                   onChange={handleFileUpload}
                   className="hidden"
                 />
