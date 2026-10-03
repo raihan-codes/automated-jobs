@@ -25,6 +25,7 @@
   body {
     @apply bg-ink-950 text-mist-100 font-body overflow-x-hidden;
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
 
   ::selection {
@@ -35,6 +36,135 @@
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { @apply bg-ink-900; }
   ::-webkit-scrollbar-thumb { @apply bg-signal rounded-full; }
+}
+
+/* ── Light Mode Root Overrides ───────────────────────────────────────
+   Applied when user selects Light Mode. */
+html.light {
+  color-scheme: light;
+}
+
+html.light body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light ::selection {
+  background-color: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+html.light ::-webkit-scrollbar-track {
+  background-color: #f1f5f9 !important;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background-color: #94a3b8 !important;
+}
+
+/* Light mode backgrounds */
+html.light .bg-\[\#090d16\],
+html.light .bg-ink-950 {
+  background-color: #f8fafc !important;
+}
+
+html.light .bg-ink-900,
+html.light .bg-slate-950 {
+  background-color: #f1f5f9 !important;
+}
+
+html.light .bg-slate-900,
+html.light .bg-slate-900\/80,
+html.light .bg-slate-900\/90,
+html.light .bg-slate-900\/70,
+html.light .bg-slate-900\/60,
+html.light .bg-slate-900\/40 {
+  background-color: #ffffff !important;
+}
+
+html.light .bg-slate-800,
+html.light .bg-slate-800\/90,
+html.light .bg-slate-800\/80,
+html.light .bg-slate-800\/60 {
+  background-color: #f1f5f9 !important;
+}
+
+/* Light mode borders */
+html.light .border-slate-800,
+html.light .border-slate-800\/80,
+html.light .border-slate-700,
+html.light .border-slate-700\/80,
+html.light .border-white\/5,
+html.light .border-white\/10 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Light mode text colors */
+html.light .text-white {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-100 {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+html.light .text-slate-300 {
+  color: #334155 !important;
+}
+
+html.light .text-slate-400 {
+  color: #64748b !important;
+}
+
+html.light .text-mist-100 {
+  color: #0f172a !important;
+}
+
+html.light .text-mist-500 {
+  color: #475569 !important;
+}
+
+html.light .text-mist-700 {
+  color: #334155 !important;
+}
+
+html.light .text-mist-900 {
+  color: #64748b !important;
+}
+
+/* Retain high-contrast text on primary buttons & accent badges */
+html.light .bg-indigo-600,
+html.light .bg-indigo-600 *,
+html.light .bg-emerald-600,
+html.light .bg-emerald-600 *,
+html.light .glass-button-primary,
+html.light .glass-button-primary *,
+html.light button.bg-indigo-600,
+html.light a.bg-indigo-600 {
+  color: #ffffff !important;
+}
+
+html.light .bg-signal,
+html.light .bg-signal * {
+  color: #04040a !important;
+}
+
+/* Light mode input elements */
+html.light input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+html.light textarea,
+html.light select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
 }
 
 @layer utilities {
@@ -77,6 +207,14 @@
     border: 1px solid rgba(148, 163, 184, 0.12);
   }
 
+  html.light .glass-panel {
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(226, 232, 240, 0.95) !important;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05) !important;
+  }
+
   .glass-panel-interactive {
     background: rgba(15, 20, 34, 0.72);
     backdrop-filter: blur(14px);
@@ -85,9 +223,23 @@
     transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
   }
 
+  html.light .glass-panel-interactive {
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(226, 232, 240, 0.95) !important;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05) !important;
+  }
+
   .glass-panel-interactive:hover {
     border-color: rgba(99, 102, 241, 0.45);
     box-shadow: 0 10px 30px -12px rgba(79, 70, 229, 0.25);
+    transform: translateY(-2px);
+  }
+
+  html.light .glass-panel-interactive:hover {
+    border-color: rgba(99, 102, 241, 0.5) !important;
+    box-shadow: 0 10px 30px -12px rgba(79, 70, 229, 0.12) !important;
     transform: translateY(-2px);
   }
 

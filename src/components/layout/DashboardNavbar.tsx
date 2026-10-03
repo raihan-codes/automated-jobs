@@ -3,6 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { NotificationDropdown } from './NotificationDropdown';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 import { useAuth } from '@/lib/firebase/AuthContext';
 import { Sparkles, LogOut } from 'lucide-react';
 import Link from 'next/link';
@@ -67,6 +68,8 @@ export function DashboardNavbar() {
           <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
           <span>Upload Resume</span>
         </Link>
+
+        <ThemeToggle variant="pill" />
 
         <NotificationDropdown />
 

@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/firebase/AuthContext';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 import {
   LayoutDashboard,
   Compass,
@@ -77,6 +78,11 @@ export function Sidebar() {
 
       {/* Footer / User Vault & Tenant */}
       <div className="space-y-3 pt-4 border-t border-slate-800/80">
+        <div className="flex items-center justify-between px-1 py-1">
+          <span className="text-[11px] font-semibold text-slate-400">Theme</span>
+          <ThemeToggle variant="pill" />
+        </div>
+
         <button
           onClick={() => openAuthModal('SIGNIN')}
           className="w-full px-3 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/40 transition-all flex items-center justify-between text-left group"

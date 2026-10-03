@@ -6,6 +6,7 @@ import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-
 import MagneticButton from '../ui/MagneticButton'
 import { useAuth } from '@/lib/firebase/AuthContext'
 import { Menu, X, Linkedin, Twitter, Github } from 'lucide-react'
+import ThemeToggle from '../ui/ThemeToggle'
 
 import { useRouter } from 'next/navigation'
 
@@ -69,6 +70,7 @@ export default function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center gap-4">
+            <ThemeToggle variant="pill" />
             {user ? (
               <MagneticButton 
                 className="px-6 py-2.5 rounded-full bg-signal text-ink-950 text-sm font-medium hover:shadow-[0_0_20px_rgba(232,255,71,0.3)] transition-all cursor-pointer"
@@ -97,13 +99,16 @@ export default function Navbar() {
             )}
           </div>
 
-          <button 
-            className="md:hidden z-50 text-white p-2"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle navigation menu"
-          >
-            {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
-          </button>
+          <div className="flex items-center gap-2 md:hidden z-50">
+            <ThemeToggle variant="pill" />
+            <button 
+              className="text-white p-2"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle navigation menu"
+            >
+              {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+            </button>
+          </div>
         </div>
       </header>
 

@@ -15,9 +15,12 @@ import {
   ExternalLink,
   Sparkles,
   LogOut,
-  UserCheck
+  UserCheck,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthContext';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 export default function SettingsPage() {
   const { user, signInWithOAuth, signOut, openLoginModal, oauthConfig } = useAuth();
@@ -96,6 +99,28 @@ export default function SettingsPage() {
           <Download className="w-4 h-4" />
           <span>Export All Data (JSON)</span>
         </button>
+      </div>
+
+      {/* Appearance & Theme (Dark Mode & Light Mode - 2 Options) */}
+      <div className="glass-panel p-6 rounded-2xl space-y-4 border border-indigo-500/20">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+              <Sun className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <span>Appearance &amp; Theme Mode</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-mono">
+                  2 OPTIONS
+                </span>
+              </h2>
+              <p className="text-xs text-slate-400">Select between Dark Mode and Light Mode with instant live application</p>
+            </div>
+          </div>
+        </div>
+
+        <ThemeToggle variant="selector" />
       </div>
 
       {/* OAuth 2.0 Authentication & Identity Management Section */}
