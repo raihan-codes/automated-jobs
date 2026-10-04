@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 
 import { useAuth } from '@/lib/firebase/AuthContext';
+import { UrlValidator } from '@/services/validation/url-validator';
 
 interface MatchedJob {
   id: string;
@@ -48,6 +49,8 @@ interface MatchedJob {
   sourcePlatform: string;
   foundOnSources?: string[];
   applicationUrl?: string;
+  sourceUrl?: string;
+  canonicalUrl?: string;
   applicationMethod?: string;
   extractedSkills?: string[];
   experienceLevel?: string;
@@ -693,17 +696,20 @@ export default function ResumeReviewPage() {
                         <Zap className="w-3.5 h-3.5 text-cyan-300" />
                         Tailor Resume & Auto-Apply
                       </Link>
-                      {selectedJob.applicationUrl && (
-                        <a
-                          href={selectedJob.applicationUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 hover:text-white border border-slate-700 transition-colors"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          View Job
-                        </a>
-                      )}
+                      {(() => {
+                        const viewJobUrl = [selectedJob.applicationUrl, selectedJob.sourceUrl, selectedJob.canonicalUrl].find((candidate) => !!candidate && UrlValidator.isAllowedExternalJobUrl(candidate));
+                        return viewJobUrl ? (
+                          <a
+                            href={viewJobUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 hover:text-white border border-slate-700 transition-colors"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            View Job
+                          </a>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
                 )}

@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { CandidateProfileData } from '@/types';
 import { useAuth } from '@/lib/firebase/AuthContext';
+import { UrlValidator } from '@/services/validation/url-validator';
 
 export default function CandidateProfilePage() {
   const { user } = useAuth();
@@ -348,9 +349,25 @@ export default function CandidateProfilePage() {
                 <p className="text-xs text-slate-300 line-clamp-1 font-medium">{job.title}</p>
                 <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
                   <span className="text-emerald-400 font-semibold">{formatSalary(job)}</span>
-                  <Link href={`/jobs/${job.id}`} className="text-indigo-400 hover:text-indigo-300 font-semibold">
-                    Tailor & Apply →
-                  </Link>
+                  <div className="flex items-center gap-2.5">
+                    <Link href={`/jobs/${job.id}`} className="text-slate-400 hover:text-slate-200">
+                      Details
+                    </Link>
+                    {(() => {
+                      const applyUrl = [job.applicationUrl, job.sourceUrl, job.canonicalUrl].find((candidate) => !!candidate && UrlValidator.isAllowedExternalJobUrl(candidate));
+                      return applyUrl ? (
+                        <a
+                          href={applyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-0.5"
+                        >
+                          <span>Apply</span>
+                          <ArrowUpRight className="w-3 h-3" />
+                        </a>
+                      ) : null;
+                    })()}
+                  </div>
                 </div>
               </div>
             ))}

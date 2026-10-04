@@ -1,6 +1,8 @@
 // AI Profile Extractor (Parses Raw Resume Text, PDF, & DOCX into Ground-Truth Candidate Profile)
 // Extracts technical skills, soft skills, programming languages, frameworks, libraries,
 // databases, tools, cloud technologies, certifications, education, experiences, projects, and domain competencies.
+// Strictly adheres to data explicitly present in resume without synthetic or hardcoded filler.
+
 import {
   CandidateProfileData,
   CandidateSkillData,
@@ -21,54 +23,50 @@ export class ProfileExtractor {
     rawText: string,
     existingEmail?: string
   ): Promise<ExtractionResult & { isLowConfidence?: boolean; missingItems?: string[] }> {
+    const NOT_SPECIFIED = 'Not specified';
     const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
     const textLower = rawText.toLowerCase();
 
     // ── 1. Contact Information ───────────────────────────────────────────────
     const emailMatch = rawText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-    const email = emailMatch ? emailMatch[0] : (existingEmail || 'candidate@example.com');
+    const email = emailMatch ? emailMatch[0] : (existingEmail || NOT_SPECIFIED);
 
     const phoneMatch = rawText.match(/\+\d{1,3}[\s.-]?(?:\(?\d{1,4}\)?[\s.-]?)?\d{3,5}[\s.-]?\d{3,5}/) ||
       rawText.match(/(?:\+?91[\s.-]?)?[6-9]\d{9}|(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
-    const phone = phoneMatch ? phoneMatch[0] : undefined;
+    const phone = phoneMatch ? phoneMatch[0].trim() : undefined;
 
     // Links & Portfolio
-    const linkedinMatch = rawText.match(/linkedin\.com\/in\/[a-zA-Z0-9_-]+/i);
-    const githubMatch = rawText.match(/github\.com\/[a-zA-Z0-9_-]+/i);
+    const linkedinMatch = rawText.match(/https?:\/\/(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+/i) ||
+      rawText.match(/linkedin\.com\/in\/[a-zA-Z0-9_-]+/i);
+    const githubMatch = rawText.match(/https?:\/\/(?:www\.)?github\.com\/[a-zA-Z0-9_-]+/i) ||
+      rawText.match(/github\.com\/[a-zA-Z0-9_-]+/i);
     
-    const portfolioExplicit = rawText.match(/(?:portfolio|website|site)[\s:]*(https?:\/\/[^\s,•]+|[a-zA-Z0-9.-]+\.(?:vercel\.app|netlify\.app|app|io|dev|com|in)[^\s,•]*)/i);
+    const portfolioExplicit = rawText.match(/(?:portfolio|website|site)[\s:]*(https?:\/\/[^\s,•|]+|[a-zA-Z0-9.-]+\.(?:vercel\.app|netlify\.app|app|io|dev|com|in)[^\s,•|]*)/i);
     const genericWebsite = rawText.match(/https?:\/\/(?!(?:www\.)?(?:linkedin\.com|github\.com|twitter\.com|x\.com))[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s,•)]*)?/i);
 
     let detectedWebsite: string | undefined = undefined;
     if (portfolioExplicit) {
-      detectedWebsite = portfolioExplicit[1];
+      detectedWebsite = portfolioExplicit[1].trim();
     } else if (genericWebsite) {
-      detectedWebsite = genericWebsite[0];
+      detectedWebsite = genericWebsite[0].trim();
     }
     if (detectedWebsite && !detectedWebsite.startsWith('http')) {
       detectedWebsite = `https://${detectedWebsite}`;
     }
 
     // ── 2. Location & Remote Preference ─────────────────────────────────────
-    let detectedLocation = 'Bengaluru, India';
+    let detectedLocation = NOT_SPECIFIED;
     const locPrefixMatch = rawText.match(/(?:location|address|residence|based in|city)[\s:]+([A-Za-z\s,.-]+?)(?:\s*[•|\n|;]|\s+email|\s+phone|\s+mobile|\s+linkedin|\s+github|$)/i);
     if (locPrefixMatch && locPrefixMatch[1].trim().length > 3 && !/developer|engineer|software|summary|objective/i.test(locPrefixMatch[1])) {
       detectedLocation = locPrefixMatch[1].trim();
     } else {
-      if (/bengaluru|bangalore|karnataka/i.test(rawText)) detectedLocation = 'Bengaluru, Karnataka, India';
-      else if (/hyderabad|secunderabad|telangana/i.test(rawText)) detectedLocation = 'Hyderabad, Telangana, India';
-      else if (/pune|mumbai|maharashtra/i.test(rawText)) detectedLocation = 'Pune, Maharashtra, India';
-      else if (/delhi\s*ncr|new\s+delhi|\bdelhi\b|noida|gurgaon|gurugram/i.test(rawText)) detectedLocation = 'Delhi NCR, India';
-      else if (/kolkata|calcutta|west\s+bengal/i.test(rawText)) detectedLocation = 'Kolkata, West Bengal, India';
-      else if (/chennai|tamil\s+nadu/i.test(rawText)) detectedLocation = 'Chennai, Tamil Nadu, India';
-      else if (/san\s+francisco|bay\s+area|\bca\b|california/i.test(rawText)) detectedLocation = 'San Francisco, CA';
-      else if (/new\s+york|\bny\b/i.test(rawText)) detectedLocation = 'New York, NY';
-      else if (/london|united\s+kingdom|\buk\b/i.test(rawText)) detectedLocation = 'London, UK';
-      else if (/toronto|vancouver|canada/i.test(rawText)) detectedLocation = 'Toronto, Canada';
-      else if (/remote/i.test(rawText)) detectedLocation = 'Remote';
+      const contactLocationMatch = rawText.match(/^([A-Za-z][A-Za-z ,.-]{3,})\s*[•|]/m);
+      if (contactLocationMatch && !/@|linkedin|github|resume|summary|experience|education/i.test(contactLocationMatch[1])) {
+        detectedLocation = contactLocationMatch[1].trim();
+      }
     }
 
-    let remotePreference: 'REMOTE' | 'HYBRID' | 'ONSITE' | 'REMOTE_OR_HYBRID' | 'ANY' = 'REMOTE_OR_HYBRID';
+    let remotePreference: 'REMOTE' | 'HYBRID' | 'ONSITE' | 'REMOTE_OR_HYBRID' | 'ANY' | undefined;
     if (/remote\s*only|strictly remote|100%\s*remote/i.test(rawText)) remotePreference = 'REMOTE';
     else if (/hybrid/i.test(rawText)) remotePreference = 'HYBRID';
     else if (/on-?site\s*only/i.test(rawText)) remotePreference = 'ONSITE';
@@ -81,7 +79,7 @@ export class ProfileExtractor {
       '.com', '.app', '.dev', '.in', '.io', '.org', '.net', 'objective', 'summary', 'skills',
       'experience', 'education', 'projects', 'frontend', 'backend', 'full stack', 'developer',
       'engineer', 'architect', 'analyst', 'bengaluru', 'bangalore', 'hyderabad', 'pune', 'delhi', 'mumbai',
-      'india', 'remote', 'address', 'university', 'college', 'institute', 'school', 'academy'
+      'asansol', 'kolkata', 'india', 'remote', 'address', 'university', 'college', 'institute', 'school', 'academy'
     ];
 
     const isNoise = (str: string) => {
@@ -112,36 +110,20 @@ export class ProfileExtractor {
       }
     }
 
-    if (!cleanName && linkedinMatch) {
-      const handle = linkedinMatch[0].replace(/linkedin\.com\/in\//i, '').replace(/[-_]/g, ' ').replace(/\d+/g, '').trim();
-      const parts = handle.split(/\s+/).filter(p => p.length >= 2 && !['in', 'dev', 'swe', 'codes'].includes(p.toLowerCase()));
-      if (parts.length >= 2) {
-        cleanName = parts.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-      }
-    }
-
-    if (!cleanName && emailMatch) {
-      const username = emailMatch[0].split('@')[0].replace(/[0-9._-]/g, ' ').trim();
-      const parts = username.split(/\s+/).filter(p => p.length >= 2);
-      if (parts.length >= 2) {
-        cleanName = parts.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-      }
-    }
-
     if (!cleanName) {
-      cleanName = 'Candidate';
+      cleanName = NOT_SPECIFIED;
     }
 
     // ── 4. Technical, Soft, Framework, & Domain Skills Extraction ────────────
     const skillsDictionary: { name: string; category: 'TECHNICAL' | 'FRAMEWORK' | 'TOOL' | 'SOFT'; synonyms?: string[] }[] = [
       // Programming Languages
       { name: 'Python', category: 'TECHNICAL', synonyms: ['python3', 'python2'] },
-      { name: 'JavaScript', category: 'TECHNICAL', synonyms: ['js', 'ecmascript'] },
-      { name: 'TypeScript', category: 'TECHNICAL', synonyms: ['ts'] },
       { name: 'Java', category: 'TECHNICAL' },
-      { name: 'C++', category: 'TECHNICAL', synonyms: ['cpp', 'c/c++'] },
-      { name: 'C#', category: 'TECHNICAL', synonyms: ['csharp', '.net'] },
       { name: 'C', category: 'TECHNICAL' },
+      { name: 'C++', category: 'TECHNICAL', synonyms: ['cpp', 'c/c++'] },
+      { name: 'JavaScript', category: 'TECHNICAL', synonyms: ['js', 'ecmascript', 'java script'] },
+      { name: 'TypeScript', category: 'TECHNICAL', synonyms: ['ts'] },
+      { name: 'C#', category: 'TECHNICAL', synonyms: ['csharp', '.net'] },
       { name: 'Go (Golang)', category: 'TECHNICAL', synonyms: ['golang', 'go language'] },
       { name: 'Rust', category: 'TECHNICAL' },
       { name: 'PHP', category: 'TECHNICAL' },
@@ -154,6 +136,14 @@ export class ProfileExtractor {
       { name: 'HTML5', category: 'TECHNICAL', synonyms: ['html'] },
       { name: 'CSS3', category: 'TECHNICAL', synonyms: ['css'] },
 
+      // Core Computer Science Concepts
+      { name: 'Data Structures & Algorithms', category: 'TECHNICAL', synonyms: ['dsa', 'data structures', 'algorithms'] },
+      { name: 'Object-Oriented Programming', category: 'TECHNICAL', synonyms: ['oop', 'oops', 'object-oriented design'] },
+      { name: 'DBMS', category: 'TECHNICAL', synonyms: ['database management systems', 'database management', 'rdbms'] },
+      { name: 'Computer Architecture', category: 'TECHNICAL', synonyms: ['computer organization', 'digital electronics', 'computer systems'] },
+      { name: 'Operating Systems', category: 'TECHNICAL', synonyms: ['operating/computer fundamentals', 'os fundamentals', 'operating system fundamentals'] },
+      { name: 'Computer Fundamentals', category: 'TECHNICAL', synonyms: ['programming fundamentals'] },
+
       // Web & Frontend Frameworks
       { name: 'React', category: 'FRAMEWORK', synonyms: ['react.js', 'reactjs'] },
       { name: 'Next.js', category: 'FRAMEWORK', synonyms: ['nextjs', 'next.js 13', 'next.js 14'] },
@@ -163,52 +153,48 @@ export class ProfileExtractor {
       { name: 'Tailwind CSS', category: 'FRAMEWORK', synonyms: ['tailwindcss'] },
       { name: 'Bootstrap', category: 'FRAMEWORK' },
       { name: 'Redux', category: 'FRAMEWORK', synonyms: ['redux toolkit', 'rtk'] },
+      { name: 'Web Development', category: 'TECHNICAL', synonyms: ['web development fundamentals', 'frontend development', 'backend development'] },
 
       // Backend Frameworks & Runtimes
       { name: 'Node.js', category: 'FRAMEWORK', synonyms: ['nodejs'] },
       { name: 'Express.js', category: 'FRAMEWORK', synonyms: ['expressjs', 'express'] },
       { name: 'NestJS', category: 'FRAMEWORK', synonyms: ['nest.js'] },
-      { name: 'Spring Boot', category: 'FRAMEWORK', synonyms: ['springboot', 'spring framework', 'spring'] },
+      { name: 'Spring Boot', category: 'FRAMEWORK', synonyms: ['springboot', 'spring framework'] },
       { name: 'Django', category: 'FRAMEWORK' },
       { name: 'FastAPI', category: 'FRAMEWORK' },
       { name: 'Flask', category: 'FRAMEWORK' },
       { name: 'Ruby on Rails', category: 'FRAMEWORK', synonyms: ['rails'] },
-      { name: 'ASP.NET', category: 'FRAMEWORK', synonyms: ['.net core'] },
       { name: 'GraphQL', category: 'TECHNICAL' },
-      { name: 'REST APIs', category: 'TECHNICAL', synonyms: ['restful', 'rest api', 'rest'] },
+      { name: 'REST APIs', category: 'TECHNICAL', synonyms: ['restful', 'rest api', 'rest/api', 'rest/api fundamentals', 'api fundamentals'] },
       { name: 'gRPC', category: 'TECHNICAL' },
-      { name: 'WebSockets', category: 'TECHNICAL', synonyms: ['socket.io'] },
+      { name: 'WebSockets', category: 'TECHNICAL', synonyms: ['socket.io', 'webrtc'] },
       { name: 'Microservices', category: 'TECHNICAL', synonyms: ['microservice architecture'] },
       { name: 'System Design', category: 'TECHNICAL', synonyms: ['distributed systems'] },
 
       // Data, ML & Analytics
+      { name: 'Data Science', category: 'TECHNICAL', synonyms: ['data analytics', 'data exploration'] },
       { name: 'Pandas', category: 'FRAMEWORK' },
       { name: 'NumPy', category: 'FRAMEWORK' },
       { name: 'Power BI', category: 'TOOL', synonyms: ['powerbi'] },
       { name: 'Tableau', category: 'TOOL' },
       { name: 'Excel', category: 'TOOL', synonyms: ['ms excel', 'advanced excel', 'spreadsheets'] },
       { name: 'Machine Learning', category: 'TECHNICAL', synonyms: ['ml', 'deep learning'] },
-      { name: 'Data Analysis', category: 'TECHNICAL', synonyms: ['data analytics', 'data exploration'] },
       { name: 'PyTorch', category: 'FRAMEWORK' },
       { name: 'TensorFlow', category: 'FRAMEWORK', synonyms: ['keras'] },
       { name: 'Scikit-Learn', category: 'FRAMEWORK', synonyms: ['sklearn'] },
       { name: 'Spark', category: 'FRAMEWORK', synonyms: ['apache spark', 'pyspark'] },
-      { name: 'Hadoop', category: 'TOOL' },
       { name: 'Kafka', category: 'TOOL', synonyms: ['apache kafka'] },
-      { name: 'Airflow', category: 'TOOL', synonyms: ['apache airflow'] },
 
       // Databases
       { name: 'PostgreSQL', category: 'TOOL', synonyms: ['postgres', 'psql'] },
       { name: 'MySQL', category: 'TOOL' },
       { name: 'MongoDB', category: 'TOOL', synonyms: ['mongo'] },
       { name: 'Redis', category: 'TOOL' },
+      { name: 'IndexedDB', category: 'TOOL' },
       { name: 'Elasticsearch', category: 'TOOL', synonyms: ['elastic search'] },
-      { name: 'Oracle DB', category: 'TOOL', synonyms: ['oracle'] },
-      { name: 'DynamoDB', category: 'TOOL' },
-      { name: 'Cassandra', category: 'TOOL' },
       { name: 'SQLite', category: 'TOOL' },
 
-      // Cloud & DevOps
+      // Cloud & DevOps & Platforms
       { name: 'AWS', category: 'TOOL', synonyms: ['amazon web services', 's3', 'ec2', 'lambda'] },
       { name: 'GCP', category: 'TOOL', synonyms: ['google cloud platform', 'google cloud'] },
       { name: 'Azure', category: 'TOOL', synonyms: ['microsoft azure'] },
@@ -216,15 +202,17 @@ export class ProfileExtractor {
       { name: 'Kubernetes', category: 'TOOL', synonyms: ['k8s'] },
       { name: 'Git', category: 'TOOL', synonyms: ['github', 'gitlab'] },
       { name: 'CI/CD', category: 'TOOL', synonyms: ['github actions', 'jenkins', 'gitlab ci'] },
-      { name: 'Terraform', category: 'TOOL' },
       { name: 'Linux', category: 'TOOL', synonyms: ['unix', 'bash', 'shell scripting'] },
+      { name: 'Vercel', category: 'TOOL' },
+      { name: 'OAuth', category: 'TECHNICAL', synonyms: ['oauth2', 'oauth 2.0'] },
 
-      // Soft Skills & Competencies
+      // Soft Skills & Strengths
       { name: 'Problem Solving', category: 'SOFT', synonyms: ['analytical skills', 'critical thinking'] },
-      { name: 'Communication', category: 'SOFT', synonyms: ['written communication', 'verbal communication'] },
+      { name: 'Logical Thinking', category: 'SOFT' },
+      { name: 'Communication', category: 'SOFT', synonyms: ['written communication', 'verbal communication', 'presentation'] },
+      { name: 'Team Collaboration', category: 'SOFT', synonyms: ['teamwork', 'cross-functional collaboration', 'collaboration'] },
       { name: 'Leadership', category: 'SOFT', synonyms: ['mentoring', 'team management'] },
-      { name: 'Agile & Scrum', category: 'SOFT', synonyms: ['scrum', 'agile methodology', 'kanban'] },
-      { name: 'Cross-functional Collaboration', category: 'SOFT', synonyms: ['teamwork', 'collaboration'] }
+      { name: 'Agile & Scrum', category: 'SOFT', synonyms: ['scrum', 'agile methodology', 'kanban'] }
     ];
 
     const extractedSkills: CandidateSkillData[] = [];
@@ -232,7 +220,11 @@ export class ProfileExtractor {
 
     for (const item of skillsDictionary) {
       let matched = false;
-      const primaryRegex = item.name === 'Go (Golang)'
+      const primaryRegex = item.name === 'C++'
+        ? /(?:c\+\+|cpp|\bc\/c\+\+)(?![a-zA-Z0-9])/i
+        : item.name === 'C#'
+        ? /(?:c#|csharp|\.net)(?![a-zA-Z0-9])/i
+        : item.name === 'Go (Golang)'
         ? /\b(?:golang|go language)\b|\bgo\b(?!\s+(?:to|for|with|and|through|ahead))/i
         : item.name === 'C'
         ? /\bc\b(?=\s*[,/•&+]|\s+programming|\s+language)/i
@@ -257,8 +249,7 @@ export class ProfileExtractor {
         extractedSkills.push({
           name: item.name,
           category: item.category,
-          years: 2,
-          level: 'ADVANCED'
+          level: 'NOT_SPECIFIED'
         });
       }
     }
@@ -293,26 +284,39 @@ export class ProfileExtractor {
     let detectedField = '';
     let detectedGpa = '';
 
-    // Degree matching
-    if (/b\.?\s*tech|bachelor\s+of\s+technology/i.test(rawText)) detectedDegree = 'Bachelor of Technology (B.Tech)';
-    else if (/m\.?\s*tech|master\s+of\s+technology/i.test(rawText)) detectedDegree = 'Master of Technology (M.Tech)';
-    else if (/b\.?\s*e\.?|bachelor\s+of\s+engineering/i.test(rawText)) detectedDegree = 'Bachelor of Engineering (B.E.)';
-    else if (/b\.?\s*s\.?|b\.?\s*sc\.?|bachelor\s+of\s+science/i.test(rawText)) detectedDegree = 'Bachelor of Science (B.S.)';
-    else if (/m\.?\s*s\.?|m\.?\s*sc\.?|master\s+of\s+science/i.test(rawText)) detectedDegree = 'Master of Science (M.S.)';
-    else if (/bca|bachelor\s+of\s+computer\s+applications/i.test(rawText)) detectedDegree = 'Bachelor of Computer Applications (BCA)';
-    else if (/mca|master\s+of\s+computer\s+applications/i.test(rawText)) detectedDegree = 'Master of Computer Applications (MCA)';
-    else if (/ph\.?d|doctor\s+of\s+philosophy/i.test(rawText)) detectedDegree = 'Ph.D.';
-    else if (/diploma/i.test(rawText)) detectedDegree = 'Diploma in Engineering';
-    else if (/bachelor/i.test(rawText)) detectedDegree = 'Bachelor Degree';
+    // Degree & Field matching
+    if (/b\.?\s*tech\s+in\s+computer\s+science\s*&\s*engineering\s*\(([^)]+)\)/i.test(rawText)) {
+      const match = rawText.match(/b\.?\s*tech\s+in\s+computer\s+science\s*&\s*engineering\s*\(([^)]+)\)/i);
+      detectedDegree = 'B.Tech in Computer Science & Engineering';
+      detectedField = match ? match[1].trim() : 'Computer Science & Engineering';
+    } else if (/b\.?\s*tech|bachelor\s+of\s+technology/i.test(rawText)) {
+      detectedDegree = 'Bachelor of Technology (B.Tech)';
+    } else if (/m\.?\s*tech|master\s+of\s+technology/i.test(rawText)) {
+      detectedDegree = 'Master of Technology (M.Tech)';
+    } else if (/b\.?\s*e\.?|bachelor\s+of\s+engineering/i.test(rawText)) {
+      detectedDegree = 'Bachelor of Engineering (B.E.)';
+    } else if (/b\.?\s*s\.?|b\.?\s*sc\.?|bachelor\s+of\s+science/i.test(rawText)) {
+      detectedDegree = 'Bachelor of Science (B.S.)';
+    } else if (/m\.?\s*s\.?|m\.?\s*sc\.?|master\s+of\s+science/i.test(rawText)) {
+      detectedDegree = 'Master of Science (M.S.)';
+    } else if (/bca|bachelor\s+of\s+computer\s+applications/i.test(rawText)) {
+      detectedDegree = 'Bachelor of Computer Applications (BCA)';
+    } else if (/mca|master\s+of\s+computer\s+applications/i.test(rawText)) {
+      detectedDegree = 'Master of Computer Applications (MCA)';
+    } else if (/ph\.?d|doctor\s+of\s+philosophy/i.test(rawText)) {
+      detectedDegree = 'Ph.D.';
+    } else if (/diploma/i.test(rawText)) {
+      detectedDegree = 'Diploma in Engineering';
+    }
 
-    // Field of study matching
-    if (/computer\s+science|cse\b|\bit\b|information\s+technology/i.test(rawText)) detectedField = 'Computer Science & Engineering';
-    else if (/data\s+science|data\s+analytics/i.test(rawText)) detectedField = 'Data Science';
-    else if (/artificial\s+intelligence|\bai\b|machine\s+learning/i.test(rawText)) detectedField = 'AI & Machine Learning';
-    else if (/electrical|electronics|ece\b|eee\b/i.test(rawText)) detectedField = 'Electronics & Communication';
-    else if (/mechanical/i.test(rawText)) detectedField = 'Mechanical Engineering';
-    else if (/mathematics|statistics/i.test(rawText)) detectedField = 'Mathematics & Statistics';
-    else if (/business|finance|management/i.test(rawText)) detectedField = 'Business / Economics';
+    if (!detectedField) {
+      if (/computer\s+science|cse\b|\bit\b|information\s+technology/i.test(rawText)) detectedField = 'Computer Science & Engineering';
+      else if (/data\s+science|data\s+analytics/i.test(rawText)) detectedField = 'Data Science';
+      else if (/artificial\s+intelligence|\bai\b|machine\s+learning/i.test(rawText)) detectedField = 'AI & Machine Learning';
+      else if (/electrical|electronics|ece\b|eee\b/i.test(rawText)) detectedField = 'Electronics & Communication';
+      else if (/mechanical/i.test(rawText)) detectedField = 'Mechanical Engineering';
+      else if (/mathematics|statistics/i.test(rawText)) detectedField = 'Mathematics & Statistics';
+    }
 
     // Institution matching
     const instMatch = rawText.match(/([A-Za-z\s,.-]+?(?:University|Institute(?:\s+of\s+Technology)?|College|Academy|Polytechnic|IIT|NIT|IIIT|BITS|Stanford|Harvard|MIT|Berkeley|Oxford))/i);
@@ -331,9 +335,9 @@ export class ProfileExtractor {
 
     if (detectedDegree || detectedInstitution) {
       educations.push({
-        institution: detectedInstitution || 'University Degree',
-        degree: detectedDegree || 'Bachelor Degree',
-        fieldOfStudy: detectedField || 'Computer Science / Engineering',
+        institution: detectedInstitution || NOT_SPECIFIED,
+        degree: detectedDegree || NOT_SPECIFIED,
+        fieldOfStudy: detectedField || NOT_SPECIFIED,
         startDate: eduYearMatch ? eduYearMatch[0].split(/[-–—]/)[0].trim() : undefined,
         endDate: eduYearMatch ? eduYearMatch[0].split(/[-–—]/)[1].trim() : undefined,
         gradeGpa: detectedGpa || undefined
@@ -348,28 +352,28 @@ export class ProfileExtractor {
       let currentExp: ExperienceData | null = null;
       for (let i = expHeaderIdx + 1; i < lines.length; i++) {
         const line = lines[i];
-        if (/^(?:education|projects|skills|certifications|awards|technical\s+skills|achievements)/i.test(line) && line.length < 35) {
+        if (/^(?:education|projects|skills|certifications|awards|technical\s+skills|achievements|relevant\s+coursework|strengths)/i.test(line) && line.length < 35) {
           break;
         }
 
         const isDateLine = /\b(20\d\d|19\d\d)\b/.test(line) && (/present|current/i.test(line) || /[-–—]/.test(line));
-        const isHeaderLine = (line.includes('—') || line.includes(' - ') || line.includes('|')) && (isDateLine || /engineer|developer|intern|lead|analyst|manager|consultant|associate/i.test(line));
+        const isHeaderLine = (line.includes('—') || line.includes(' - ') || line.includes('|')) && !line.startsWith('-') && !line.startsWith('•');
 
         if (isHeaderLine || isDateLine) {
           if (currentExp && (currentExp.company || currentExp.role)) {
             experiences.push(currentExp);
           }
           const parts = line.split(/[-—–|]/).map(p => p.trim());
-          const comp = parts[0] || 'Company';
-          const role = parts[1] || 'Software Engineer';
+          const role = parts[0] || NOT_SPECIFIED;
+          const comp = parts[1] || NOT_SPECIFIED;
           const isCurrent = /present|current/i.test(line);
 
           currentExp = {
-            company: comp.replace(/\(.*\)/, '').trim(),
-            role: role.replace(/\(.*\)/, '').trim() || 'Software Engineer',
-            location: detectedLocation,
-            startDate: '2022',
-            endDate: isCurrent ? null : '2024',
+            company: comp.replace(/\(.*\)/, '').trim() || NOT_SPECIFIED,
+            role: role.replace(/\(.*\)/, '').trim() || NOT_SPECIFIED,
+            location: NOT_SPECIFIED,
+            startDate: (line.match(/\b(?:19|20)\d{2}\b/) || [NOT_SPECIFIED])[0],
+            endDate: isCurrent ? null : ((line.match(/[-–—]\s*((?:19|20)\d{2})\b/) || [])[1] || null),
             isCurrent,
             bullets: [],
             technologies: []
@@ -394,7 +398,7 @@ export class ProfileExtractor {
       let currentProj: ProjectData | null = null;
       for (let i = projHeaderIdx + 1; i < lines.length; i++) {
         const line = lines[i];
-        if (/^(?:education|experience|skills|certifications|awards|achievements)/i.test(line) && line.length < 35) {
+        if (/^(?:education|experience|skills|certifications|awards|achievements|relevant\s+coursework|strengths)/i.test(line) && line.length < 35) {
           break;
         }
 
@@ -423,72 +427,35 @@ export class ProfileExtractor {
     }
 
     // ── 9. Calculate Years of Experience & Seniority Level ──────────────────
-    let totalCalculatedYears = 0;
-    const yearMatches = Array.from(rawText.matchAll(/\b(19\d\d|20\d\d)\b/g)).map(m => parseInt(m[1], 10));
-    if (yearMatches.length >= 2) {
-      const minYear = Math.min(...yearMatches);
-      const currentYear = new Date().getFullYear();
-      const maxYear = Math.min(currentYear, Math.max(...yearMatches));
-      if (minYear >= 1990 && maxYear <= currentYear && minYear <= maxYear) {
-        const diff = maxYear - minYear;
-        if (diff > 0 && diff < 35) {
-          // If candidate is a student/grad, do not inflate
-          if (/student|undergrad|pursuing|class of 202/i.test(rawText)) {
-            totalCalculatedYears = Math.min(1, experiences.length);
-          } else {
-            totalCalculatedYears = diff;
-          }
-        }
-      }
-    }
-
-    if (totalCalculatedYears === 0) {
-      if (experiences.length > 0) {
-        totalCalculatedYears = experiences.length * 2;
-      } else if (/intern|student|fresh graduate|entry level/i.test(rawText)) {
-        totalCalculatedYears = 0;
-      } else {
-        totalCalculatedYears = 2;
-      }
-    }
-
-    // ── 10. Desired / Inferred Job Titles ────────────────────────────────────
-    const desiredTitles: string[] = [];
-    const isIntern = /intern|internship|student|fresher|undergrad/i.test(rawText);
-    const hasDataSkills = extractedSkills.some(s => ['Python', 'SQL', 'Pandas', 'Power BI', 'Tableau', 'Data Analysis', 'Machine Learning'].includes(s.name));
-    const hasFrontendSkills = extractedSkills.some(s => ['React', 'Next.js', 'Vue.js', 'Angular', 'Tailwind CSS'].includes(s.name));
-    const hasBackendSkills = extractedSkills.some(s => ['Node.js', 'Go (Golang)', 'Java', 'Spring Boot', 'Python', 'FastAPI', 'PostgreSQL'].includes(s.name));
-
-    if (isIntern) {
-      if (hasDataSkills && !hasFrontendSkills) {
-        desiredTitles.push('Data Analyst Intern', 'Data Science Intern', 'Business Intelligence Intern');
-      } else if (hasFrontendSkills && !hasBackendSkills) {
-        desiredTitles.push('Frontend Developer Intern', 'React Developer Intern', 'Software Engineer Intern');
-      } else {
-        desiredTitles.push('Software Development Engineer Intern (SDE Intern)', 'Full Stack Developer Intern', 'Software Engineer Intern');
-      }
+    let totalCalculatedYears: number | undefined;
+    const explicitYearsMatch = rawText.match(/(\d+(?:\.\d+)?)\+?\s+years?(?:\s+of)?\s+(?:relevant\s+)?experience/i);
+    if (explicitYearsMatch) {
+      totalCalculatedYears = parseFloat(explicitYearsMatch[1]);
     } else {
-      if (hasDataSkills && !hasFrontendSkills && !hasBackendSkills) {
-        desiredTitles.push('Data Analyst', 'Data Scientist', 'Business Intelligence Developer', 'Analytics Engineer');
-      } else if (hasFrontendSkills && hasBackendSkills) {
-        desiredTitles.push('Full Stack Developer', 'Software Development Engineer (SDE)', 'Senior Software Engineer');
-      } else if (hasFrontendSkills) {
-        desiredTitles.push('Frontend Engineer', 'React Developer', 'UI Engineer');
-      } else if (hasBackendSkills) {
-        desiredTitles.push('Backend Engineer', 'Software Development Engineer (SDE)', 'Systems Software Engineer');
-      } else {
-        desiredTitles.push('Software Engineer', 'Full Stack Developer');
+      // If candidate is a student (e.g. graduation 2026/2028), do not fabricate full-time experience years
+      const isStudent = educations.some(e => {
+        const endYear = parseInt(e.endDate || '0', 10);
+        return endYear >= new Date().getFullYear();
+      });
+      if (isStudent && experiences.length === 0) {
+        totalCalculatedYears = 0;
       }
     }
 
-    // ── 11. Sensitive Fields & Preferences ──────────────────────────────────
-    let noticePeriod: 'IMMEDIATE' | '15_DAYS' | '30_DAYS' | '60_DAYS' | '90_DAYS' = '30_DAYS';
-    if (/immediate|0\s*days|ready to join/i.test(rawText)) noticePeriod = 'IMMEDIATE';
-    else if (/15\s*days/i.test(rawText)) noticePeriod = '15_DAYS';
-    else if (/60\s*days|2\s*months/i.test(rawText)) noticePeriod = '60_DAYS';
-    else if (/90\s*days|3\s*months/i.test(rawText)) noticePeriod = '90_DAYS';
+    // ── 10. Desired Titles / Roles ──────────────────────────────────────────
+    const desiredTitles: string[] = [];
+    const titleMatch = rawText.match(/(?:headline|desired\s+role|target\s+role|position|professional\s+title)[\s:–—-]+([^\n]+)/i);
+    if (titleMatch && titleMatch[1].trim()) desiredTitles.push(titleMatch[1].trim());
 
-    let expectedSalaryLPA = isIntern ? 12 : 24;
+    // ── 11. Sensitive Fields & Preferences (Only if explicitly present) ────
+    let noticePeriod: 'IMMEDIATE' | '15_DAYS' | '30_DAYS' | '60_DAYS' | '90_DAYS' | undefined;
+    if (/\b(?:notice\s*period|available\s*to\s*join)[\s:]*(?:immediate|0\s*days|ready\s*to\s*join)\b/i.test(rawText)) noticePeriod = 'IMMEDIATE';
+    else if (/\b(?:notice\s*period)[\s:]*15\s*days\b/i.test(rawText)) noticePeriod = '15_DAYS';
+    else if (/\b(?:notice\s*period)[\s:]*30\s*days\b/i.test(rawText)) noticePeriod = '30_DAYS';
+    else if (/\b(?:notice\s*period)[\s:]*60\s*days\b/i.test(rawText)) noticePeriod = '60_DAYS';
+    else if (/\b(?:notice\s*period)[\s:]*90\s*days\b/i.test(rawText)) noticePeriod = '90_DAYS';
+
+    let expectedSalaryLPA: number | undefined;
     let detectedMinSalary: number | undefined = undefined;
     const lpaMatch = rawText.match(/(?:expected|current)?\s*ctc[\s:]*₹?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakhs?)/i);
     if (lpaMatch) {
@@ -496,46 +463,44 @@ export class ProfileExtractor {
       detectedMinSalary = Math.round(expectedSalaryLPA * 100000);
     }
 
-    let requiresVisa = false;
-    let workAuthorization = 'Authorized to Work (No Sponsorship Required)';
-    if (/(?<!no\s+)sponsorship\s+required|require\s+visa|need\s+visa|opt|cpt|h-?1b/i.test(rawText)) {
+    let requiresVisa: boolean | undefined;
+    let workAuthorization: string | undefined;
+    if (/\b(?:require\s+visa|need\s+visa|visa\s+sponsorship\s+required|opt|cpt|h-?1b)\b/i.test(rawText)) {
       requiresVisa = true;
-      workAuthorization = 'Requires Visa Sponsorship / Work Permit';
-    } else if (/indian citizen|india/i.test(rawText)) {
+      workAuthorization = 'Requires Visa Sponsorship';
+    } else if (/\b(?:no\s+sponsorship\s+required|authorized\s+to\s+work|citizen|permanent\s+resident)\b/i.test(rawText)) {
       requiresVisa = false;
-      workAuthorization = 'Indian Citizen (No Sponsorship Required)';
-    } else if (/us citizen|u\.s\. citizen/i.test(rawText)) {
-      requiresVisa = false;
-      workAuthorization = 'US Citizen (No Sponsorship Required)';
+      const citizenMatch = rawText.match(/([A-Za-z]+\s+Citizen)/i);
+      workAuthorization = citizenMatch ? citizenMatch[0] : 'Authorized to Work';
     }
 
     // Summary / Headline
     const summaryIndex = lines.findIndex(l => /^(?:summary|professional\s+summary|about\s+me|profile|objective)/i.test(l));
     const summary = summaryIndex >= 0 && lines[summaryIndex + 1]
       ? lines.slice(summaryIndex + 1, summaryIndex + 4).join(' ')
-      : `${cleanName} — ${desiredTitles[0] || 'Software Engineer'} with skills in ${extractedSkills.slice(0, 5).map(s => s.name).join(', ') || 'Software Development'}.`;
+      : NOT_SPECIFIED;
 
-    const headline = `${cleanName} — ${desiredTitles[0] || 'Software Engineer'}${extractedSkills.length > 0 ? ` | ${extractedSkills.slice(0, 3).map(s => s.name).join(', ')}` : ''}`;
+    const headline = titleMatch?.[1].trim() || NOT_SPECIFIED;
 
     const profile: CandidateProfileData = {
-      fullName: cleanName,
+      fullName: cleanName || NOT_SPECIFIED,
       email,
       phone,
       location: detectedLocation,
       headline,
       summary,
-      linkedinUrl: linkedinMatch ? `https://${linkedinMatch[0].replace(/^https?:\/\//, '')}` : undefined,
-      githubUrl: githubMatch ? `https://${githubMatch[0].replace(/^https?:\/\//, '')}` : undefined,
+      linkedinUrl: linkedinMatch ? (linkedinMatch[0].startsWith('http') ? linkedinMatch[0] : `https://${linkedinMatch[0]}`) : undefined,
+      githubUrl: githubMatch ? (githubMatch[0].startsWith('http') ? githubMatch[0] : `https://${githubMatch[0]}`) : undefined,
       website: detectedWebsite,
       portfolioUrl: detectedWebsite,
       desiredTitles,
-      preferredLocations: [detectedLocation, 'Bengaluru, India', 'Remote'],
+      preferredLocations: detectedLocation === NOT_SPECIFIED ? [] : [detectedLocation],
       remotePreference,
       minSalary: detectedMinSalary,
       expectedSalaryLPA,
       noticePeriod,
       requiresVisa,
-      workAuthorization,
+      workAuthorization: workAuthorization || NOT_SPECIFIED,
       yearsOfExperience: totalCalculatedYears,
       skills: extractedSkills,
       experiences,

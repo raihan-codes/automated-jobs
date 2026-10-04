@@ -219,8 +219,9 @@ class StoreService {
     this.users = [];
     // Candidate profiles will be created upon first login
 
-    // Seed verified active job postings catalog (dynamically refreshed with live Adzuna & Jooble search when configured)
-    this.jobPostings = getDefaultJobPostings(tenantId);
+    // Never seed fake or invented job listings as a fallback. Real jobs are discovered only from
+    // authorized sources or the live API ingestion pipeline.
+    this.jobPostings = [];
 
     // No default matches
     this.matches = [];

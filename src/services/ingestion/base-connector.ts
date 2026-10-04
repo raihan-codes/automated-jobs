@@ -89,13 +89,29 @@ export abstract class BaseConnector implements JobSourceAdapter {
   /**
    * Helper: Resolve country and remote type globally
    */
-  protected resolveLocationAndCountry(locationStr: string): { location: string; country: string; isRemote: boolean; remoteType: 'REMOTE' | 'HYBRID' | 'ONSITE' } {
-    const loc = (locationStr || 'Remote').trim();
+  protected resolveLocationAndCountry(locationStr?: string): { location: string; country: string; isRemote: boolean; remoteType: 'REMOTE' | 'HYBRID' | 'ONSITE' } {
+    const loc = (locationStr && locationStr.trim()) ? locationStr.trim() : 'Not specified';
     const locLower = loc.toLowerCase();
 
-    let isRemote = /remote|anywhere|work from home|distributed|virtual/i.test(locLower);
-    let remoteType: 'REMOTE' | 'HYBRID' | 'ONSITE' = isRemote ? 'REMOTE' : (/hybrid/i.test(locLower) ? 'HYBRID' : 'ONSITE');
-    let country = 'Global / Remote';
+    const hasHybrid = /\bhybrid\b/i.test(locLower);
+    const hasOnsite = /\b(?:on-?site|in-?office|at\s+office|\bhq\b)\b/i.test(locLower);
+    const hasRemoteKeyword = /\b(?:remote|anywhere|work\s+from\s+home|wfh|distributed|virtual)\b/i.test(locLower);
+
+    let isRemote = false;
+    let remoteType: 'REMOTE' | 'HYBRID' | 'ONSITE' = 'ONSITE';
+
+    if (hasHybrid) {
+      remoteType = 'HYBRID';
+      isRemote = false;
+    } else if (hasRemoteKeyword && !hasOnsite) {
+      remoteType = 'REMOTE';
+      isRemote = true;
+    } else {
+      remoteType = 'ONSITE';
+      isRemote = false;
+    }
+
+    let country = 'Not specified';
 
     if (/india|bengaluru|bangalore|hyderabad|pune|delhi|mumbai|kolkata|chennai|noida|gurgaon|gurugram|ahmedabad|kochi/i.test(locLower)) {
       country = 'India';

@@ -19,18 +19,13 @@ export async function GET(request: Request) {
 
   const userId = paramUserId || headerUserId || 'user_raihan_molla';
 
-  // Retrieve user profile to ensure matches are tailored
+  // Retrieve user profile to ensure matches are tailored strictly to actual uploaded resume
   let userProfile = db.profiles.get(userId);
   if (!userProfile) {
     userProfile = await getProfileFromFirestore(userId).catch(() => null) || undefined;
     if (userProfile) {
       db.profiles.set(userId, userProfile);
     }
-  }
-
-  // Ensure default verified jobs catalog is loaded if store is empty (e.g. serverless cold start)
-  if (db.jobPostings.length === 0) {
-    db.seedDefaultData();
   }
 
   // If memory store has no jobs, or if user is searching a specific query, trigger real-time search across Adzuna + Jooble
@@ -44,46 +39,22 @@ export async function GET(request: Request) {
     });
   }
 
-  // Load any Firestore matches for this user
-  const firestoreMatches: Record<string, any> = await getUserMatchesFromFirestore(userId).catch(() => ({}));
+  // Load jobs from memory store (only real scraped / synced postings)
+  const jobList = db.jobPostings;
 
-  let filtered = await Promise.all(db.jobPostings.map(async job => {
-    let match = db.matches.find(m => m.jobPostingId === job.id && m.userId === userId);
-    
-    // Check Firestore if missing in memory
-    if (!match && firestoreMatches[job.id]) {
-      match = {
-        id: `match_${job.id}_${userId}`,
-        userId,
-        jobPostingId: job.id,
-        matchResult: firestoreMatches[job.id].matchResult,
-        isStarred: Boolean(firestoreMatches[job.id].isStarred),
-        isDismissed: false,
-        createdAt: firestoreMatches[job.id].updatedAt
-      };
-      db.matches.push(match);
-    }
+  let filtered = await Promise.all(jobList.map(async job => {
+    let matchResult: any = null;
 
-    // If candidate profile exists but this job hasn't been scored for them yet, compute match
-    if (!match && userProfile) {
-      const computedResult = await JobMatcher.analyzeMatch(userProfile, job);
-      match = {
-        id: `match_${job.id}_${userId}`,
-        userId,
-        jobPostingId: job.id,
-        matchResult: computedResult,
-        isStarred: false,
-        isDismissed: false,
-        createdAt: new Date().toISOString()
-      };
-      db.matches.push(match);
+    if (userProfile) {
+      // Always dynamically compute fresh, grounded match using actual resume profile & actual JD
+      matchResult = await JobMatcher.analyzeMatch(userProfile, job);
     }
 
     return {
       ...job,
-      matchScore: match?.matchResult?.overallScore ?? 0,
-      matchResult: match?.matchResult,
-      isStarred: match?.isStarred || false
+      matchScore: matchResult?.overallScore ?? 0,
+      matchResult: matchResult || undefined,
+      isStarred: false
     };
   }));
 
@@ -134,12 +105,17 @@ export async function GET(request: Request) {
     enriched = enriched.filter(j => j.employmentType === employmentType);
   }
 
+  // Strict Remote Only filtering: Only show jobs explicitly marked Remote, never Hybrid or On-site
   if (remoteOnly) {
-    enriched = enriched.filter(j => j.isRemote);
+    enriched = enriched.filter(j => 
+      j.isRemote === true &&
+      j.remoteType === 'REMOTE' &&
+      !/\b(?:hybrid|onsite|on-site|in-office|\bhq\b)\b/i.test(j.location || '')
+    );
   }
 
   if (minScore > 0) {
-    enriched = enriched.filter(j => j.matchScore >= minScore);
+    enriched = enriched.filter(j => (j.matchScore ?? 0) >= minScore);
   }
 
   // Recency Window Filter Policy:
@@ -154,51 +130,31 @@ export async function GET(request: Request) {
     enriched = enriched.filter(j => j.daysOld <= 60);
   } else if (recencyParam === 'older') {
     enriched = enriched.filter(j => j.daysOld > 30);
-  } else if (recencyParam === 'all' || recencyParam === 'Infinity') {
-    // Keep all jobs
+  } else if (recencyParam === 'all') {
+    // Show all jobs regardless of age
   } else {
-    // Default: 0-30 days (Recent opportunities only)
-    const maxDays = parseInt(recencyParam, 10);
-    const limit = isNaN(maxDays) ? 30 : maxDays;
-    const withinDays = enriched.filter(j => j.daysOld <= limit);
-    if (withinDays.length > 0) {
-      enriched = withinDays;
-    }
+    // Default recency window: 0-30 days
+    enriched = enriched.filter(j => j.daysOld <= 30);
   }
 
-  // Balanced Sorting:
-  // 1. Resume match score
-  // 2. Recency
-  // 3. Job relevance
-  // Ensures genuinely recent relevant jobs outrank older jobs with marginally higher match scores.
-  const getRecencyScore = (daysOld: number): number => {
-    if (daysOld <= 2) return 100;
-    if (daysOld <= 7) return 90;
-    if (daysOld <= 14) return 75;
-    if (daysOld <= 30) return 60;
-    if (daysOld <= 60) return 35;
-    return 10;
-  };
-
+  // Sort by match score descending, then by recency (newest first)
   enriched.sort((a, b) => {
-    const rankA = (a.matchScore * 0.70) + (getRecencyScore(a.daysOld) * 0.30);
-    const rankB = (b.matchScore * 0.70) + (getRecencyScore(b.daysOld) * 0.30);
-    if (Math.abs(rankB - rankA) > 0.5) {
-      return rankB - rankA;
-    }
-    if (b.matchScore !== a.matchScore) {
-      return b.matchScore - a.matchScore;
+    if ((b.matchScore || 0) !== (a.matchScore || 0)) {
+      return (b.matchScore || 0) - (a.matchScore || 0);
     }
     return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
   });
 
+  const candidateDisplayName = userProfile?.fullName && userProfile.fullName !== 'Not specified'
+    ? userProfile.fullName
+    : (userProfile?.email && userProfile.email !== 'Not specified' ? userProfile.email.split('@')[0] : 'Candidate');
+
   return NextResponse.json({
     success: true,
-    userId,
+    total: enriched.length,
+    jobs: enriched,
     hasCustomProfile: Boolean(userProfile && userProfile.skills && userProfile.skills.length > 0),
-    candidateName: userProfile?.fullName || 'Candidate',
-    recencyFilter: recencyParam,
-    count: enriched.length,
-    jobs: enriched
+    candidateName: candidateDisplayName,
+    sources: ['ADZUNA', 'JOOBLE']
   });
 }

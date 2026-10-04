@@ -41,7 +41,7 @@ export function DashboardNavbar() {
   };
 
   return (
-    <header className="h-16 glass-panel border-b border-slate-800/80 px-6 flex items-center justify-between sticky top-0 z-30">
+    <header className="workspace-navbar h-16 glass-panel border-b border-slate-800/80 px-6 flex items-center justify-between sticky top-0 z-30">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>

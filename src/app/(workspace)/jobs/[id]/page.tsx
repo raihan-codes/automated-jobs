@@ -18,9 +18,12 @@ import {
   ArrowUpRight,
   ExternalLink,
   Bot,
-  RefreshCw
+  RefreshCw,
+  Copy,
+  Check
 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/AuthContext';
+import { UrlValidator } from '@/services/validation/url-validator';
 
 export default function JobDetailPage() {
   const params = useParams();
@@ -31,9 +34,12 @@ export default function JobDetailPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [tailoredResume, setTailoredResume] = useState<any>(null);
+  const [copiedBullets, setCopiedBullets] = useState(false);
 
   const { user, openAuthModal } = useAuth();
   const activeUserId = user?.uid || '';
+  const externalApplyUrl = job ? [job.applicationUrl, job.sourceUrl, job.canonicalUrl].find((candidate) => !!candidate && UrlValidator.isAllowedExternalJobUrl(candidate)) || null : null;
 
   useEffect(() => {
     let isMounted = true;
@@ -110,7 +116,7 @@ export default function JobDetailPage() {
     if (!job) return;
 
     if (!user && !activeUserId) {
-      setActionMessage('Please sign in or create an account to tailor your resume and prepare your application.');
+      setActionMessage('Please sign in or create an account to tailor your resume.');
       if (openAuthModal) {
         openAuthModal('SIGNIN');
       }
@@ -119,9 +125,9 @@ export default function JobDetailPage() {
 
     const currentUserId = user?.uid || activeUserId || 'user_raihan_molla';
     setActionLoading(true);
-    setActionMessage('Generating truthful JD-tailored resume & pre-filling ATS form with Playwright...');
+    setActionMessage('Generating truthful JD-tailored resume bullets & keywords...');
     try {
-      // 1. Tailor Resume
+      // Tailor Resume
       const resResume = await fetch('/api/resumes/tailor', {
         method: 'POST',
         headers: {
@@ -142,44 +148,31 @@ export default function JobDetailPage() {
         throw new Error(dataResume.error || 'Failed to tailor resume');
       }
 
-      // 2. Prepare Application via Automation Worker
-      const resPrep = await fetch(`/api/applications/${encodeURIComponent(job.id)}/prepare`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': currentUserId
-        },
-        body: JSON.stringify({ userId: currentUserId })
-      });
-
-      if (resPrep.status === 401) {
-        setActionMessage('Session expired or login required. Opening sign-in...');
-        if (openAuthModal) openAuthModal('SIGNIN');
-        return;
-      }
-
-      const dataPrep = await resPrep.json();
-
-      if (dataPrep.success && dataPrep.result?.id) {
-        setActionMessage('Application prepared and saved! Redirecting to review checkpoint...');
-        setTimeout(() => {
-          router.push(`/applications/${dataPrep.result.id}`);
-        }, 1200);
-      } else if (dataPrep.success) {
-        setActionMessage('Application created. Navigating to applications list...');
-        setTimeout(() => router.push('/applications'), 1200);
+      if (dataResume.tailoredResume) {
+        setTailoredResume(dataResume.tailoredResume);
+        setActionMessage('ATS-tailored bullet points generated! Copy them below and apply on the official company site.');
       } else {
-        setActionMessage(dataPrep.error || 'Failed to prepare application');
-        setTimeout(() => setActionLoading(false), 2500);
-        return;
+        setActionMessage('Resume tailored successfully!');
       }
     } catch (e: any) {
       setActionMessage(e.message || 'Operation failed');
-      setTimeout(() => setActionLoading(false), 2500);
-      return;
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const copyBulletsToClipboard = () => {
+    if (!tailoredResume) return;
+    const bullets: string[] = [];
+    if (Array.isArray(tailoredResume.experiences)) {
+      tailoredResume.experiences.forEach((exp: any) => {
+        if (Array.isArray(exp.bullets)) bullets.push(...exp.bullets);
+      });
+    }
+    const textToCopy = bullets.length > 0 ? bullets.map(b => `• ${b}`).join('\n') : (tailoredResume.summary || '');
+    navigator.clipboard.writeText(textToCopy);
+    setCopiedBullets(true);
+    setTimeout(() => setCopiedBullets(false), 2500);
   };
 
   if (loading) {
@@ -320,25 +313,27 @@ export default function JobDetailPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <a
-              href={job.applicationUrl || job.sourceUrl || job.canonicalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-2 text-xs font-semibold"
-              title="Open Official Job Posting on Source"
-            >
-              <span>View on {job.sourcePlatform === 'ADZUNA' ? 'Adzuna' : 'Jooble'}</span>
-              <ExternalLink className="w-4 h-4" />
-            </a>
+          <div className="flex items-center gap-3 flex-wrap">
+            {externalApplyUrl && (
+              <a
+                href={externalApplyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="glass-button-primary px-6 py-3 rounded-xl text-xs font-bold text-white flex items-center gap-2 shadow-lg shadow-indigo-600/30 cursor-pointer"
+                title="Open Official Job Application Page"
+              >
+                <span>Apply on {job.company || 'Official Portal'}</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
 
             <button
               onClick={handleGenerateResumeAndPrepare}
               disabled={actionLoading}
-              className="glass-button-primary px-6 py-3 rounded-xl text-xs font-bold text-white flex items-center gap-2 shadow-lg shadow-indigo-600/30 disabled:opacity-50"
+              className="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 transition-colors flex items-center gap-2 text-xs font-semibold disabled:opacity-50"
             >
-              {actionLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-              <span>{actionLoading ? 'Preparing Application...' : 'Tailor Resume & Prepare Application'}</span>
+              {actionLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-cyan-400" />}
+              <span>{actionLoading ? 'Tailoring Resume...' : 'Tailor Resume for this Job'}</span>
             </button>
           </div>
         </div>
@@ -347,6 +342,65 @@ export default function JobDetailPage() {
           <div className="p-3.5 rounded-xl bg-indigo-950/80 border border-indigo-500/40 text-indigo-200 text-xs flex items-center gap-2 animate-in fade-in">
             <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
             <span>{actionMessage}</span>
+          </div>
+        )}
+
+        {/* Tailored Resume Section (Generated on Demand) */}
+        {tailoredResume && (
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-900 border border-indigo-500/30 space-y-4 animate-in fade-in">
+            <div className="flex items-center justify-between pb-3 border-b border-indigo-500/20 flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-indigo-400" />
+                <h3 className="text-sm font-bold text-white">
+                  ATS-Tailored Resume Highlights for {job.company}
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={copyBulletsToClipboard}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-indigo-600/20"
+                >
+                  {copiedBullets ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedBullets ? 'Copied Bullets!' : 'Copy Bullets for Application'}</span>
+                </button>
+                {externalApplyUrl && (
+                  <a
+                    href={externalApplyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition-colors"
+                  >
+                    <span>Open Application Page</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {tailoredResume.summary && (
+              <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-1">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-300">Tailored Professional Summary</p>
+                <p className="text-xs text-slate-300 leading-relaxed">{tailoredResume.summary}</p>
+              </div>
+            )}
+
+            {Array.isArray(tailoredResume.experiences) && tailoredResume.experiences.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Tailored Experience Bullet Points</p>
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {tailoredResume.experiences.map((exp: any, i: number) => (
+                    <div key={i} className="p-3 rounded-xl bg-slate-950/50 border border-slate-800/60 space-y-1.5 text-xs">
+                      <p className="font-bold text-slate-200">{exp.role} <span className="font-normal text-slate-400">at {exp.company}</span></p>
+                      <ul className="space-y-1 text-slate-300 list-disc list-inside">
+                        {Array.isArray(exp.bullets) && exp.bullets.map((b: string, idx: number) => (
+                          <li key={idx} className="text-[11px] leading-relaxed">{b}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

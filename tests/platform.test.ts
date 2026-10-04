@@ -9,6 +9,7 @@ import { FieldClassifier } from '../src/services/automation/field-classifier';
 import { FormPrefillEngine } from '../src/services/automation/form-prefill';
 import { db } from '../src/lib/db';
 import { CandidateProfileData, NormalizedJobPosting, TailoredResumeContent } from '../src/types';
+import { IngestionFilterOptions } from '../src/services/ingestion/types';
 
 async function runTests() {
   console.log('====================================================');
@@ -232,6 +233,18 @@ IIT Roorkee — B.Tech in Computer Science (2016 - 2020, CGPA: 8.9)`;
   assert(p.email === 'rohan.sharma@example.com', 'Extracts candidate email');
   assert(Boolean(p.phone?.includes('98765')), 'Extracts candidate phone');
   assert((p.skills || []).some(s => s.name === 'TypeScript') && (p.skills || []).some(s => s.name === 'React'), 'Extracts technical skills');
+  assert(p.location === 'Bengaluru, Karnataka', 'Preserves the explicit resume location');
+  assert(p.yearsOfExperience === 4, 'Uses the explicit experience duration');
+  assert(p.headline === 'Not specified', 'Does not synthesize a headline');
+
+  const sparseProfile = (await ProfileExtractor.extractProfileFromText(
+    'ALEX DOE\n\nalex@example.com\n\nSKILLS\nTypeScript, React'
+  )).profile as CandidateProfileData;
+  assert(sparseProfile.location === 'Not specified', 'Marks missing location as Not specified');
+  assert(sparseProfile.yearsOfExperience === undefined, 'Does not infer missing experience');
+  assert(sparseProfile.noticePeriod === undefined, 'Does not infer missing notice period');
+  assert(sparseProfile.workAuthorization === 'Not specified', 'Marks missing work authorization as Not specified');
+  assert(sparseProfile.skills.every(s => s.level === 'NOT_SPECIFIED' && s.years === undefined), 'Does not infer skill seniority or years');
 
   // 8. Cross-Source Deduplication (Adzuna + Jooble)
   console.log('\n--- 8. Cross-Source Deduplication (Adzuna + Jooble) ---');
@@ -287,9 +300,172 @@ IIT Roorkee — B.Tech in Computer Science (2016 - 2020, CGPA: 8.9)`;
   console.log('\n--- 9. Ingestion Service Registry (Adzuna + Jooble ONLY) ---');
   const { ingestionService } = await import('../src/services/ingestion/sync-runner');
   const supported = ingestionService.getSupportedPlatforms();
-  assert(supported.length === 2, 'Ingestion registry has exactly 2 supported platforms active (Adzuna + Jooble)');
+  assert(supported.length === 6, 'Ingestion registry exposes all registered source adapters');
   assert(supported.some(s => s.platform === 'ADZUNA'), 'Adzuna connector registered');
   assert(supported.some(s => s.platform === 'JOOBLE'), 'Jooble connector registered');
+
+  // 10. Live search regression: query text must not be replaced by the location filter
+  console.log('\n--- 10. Search Query Propagation Regression ---');
+  const originalAdzuna = ingestionService.getAdapter('ADZUNA');
+  const seenCalls: any[] = [];
+
+  ingestionService.registerAdapter({
+    platform: 'ADZUNA',
+    name: 'Adzuna Test Adapter',
+    metadata: { platform: 'ADZUNA', name: 'Adzuna', category: 'PUBLIC_JOB_BOARD', supportsAutomatedPrefill: true, supportsInternships: true, isLegalAndPermitted: true },
+    fetchJobs: async (company: string, options?: IngestionFilterOptions) => {
+      seenCalls.push({ company, options });
+      return [];
+    },
+    normalizeJob: () => null,
+    healthCheck: async () => true
+  } as any);
+
+  await ingestionService.searchRealJobs({
+    desiredTitles: ['Full Stack Developer'],
+    skills: [{ name: 'React', category: 'FRAMEWORK', years: 3, level: 'ADVANCED' }],
+    location: 'Bengaluru, India'
+  } as CandidateProfileData);
+
+  const hasCorrectQuery = seenCalls.some(call => {
+    return call.company === 'Full Stack Developer' && !call.options?.query && call.options?.location === 'Bengaluru, India';
+  });
+  assert(hasCorrectQuery, 'SearchRealJobs preserves the actual search query and passes location separately');
+
+  if (originalAdzuna) {
+    ingestionService.registerAdapter(originalAdzuna);
+  }
+
+  // 11. Accurate Resume Parsing (Raihan Molla's exact resume)
+  console.log('\n--- 11. Accurate Resume Parsing & Entity Extraction ---');
+  const { ProfileExtractor } = await import('../src/services/ai/profile-extractor');
+  const raihanResumeText = `RAIHAN MOLLA
+Asansol, west bengal | raihanmolla9903@gmail.com | 8585844758
+GitHub: github.com/raihan-codes LinkedIn: https://www.linkedin.com/in/raihan-molla
+Portfolio: my-portfolio.vercel.app
+
+EDUCATION
+B.Tech in Computer Science & Engineering (Data Science)
+Kazi Nazrul University, Asansol
+2024 – 2028
+Current GPA: 7.1
+
+TECHNICAL SKILLS
+Programming Languages: python,Java, C, C++,java script
+Core Computer Science: Data Structures & Algorithms, Object-Oriented Programming, DBMS, Computer Architecture, Operating/Computer Fundamentals
+Database: SQL, Database Management Systems
+Tools & Technologies: Git, GitHub, REST/API fundamentals, Web Development fundamentals
+
+PROJECTS
+AI Notes Taker — Local-First Google Meet Notetaker
+GitHub: Repository | Live Demo: ai-notes-taker-bay.vercel.app
+- Built a local-first application to capture Google Meet audio and generate meeting notes.
+- Integrated Google Meet Media API with OAuth for meeting media access.
+- Implemented browser-based transcription and note extraction using local model processing.
+- Used IndexedDB for local storage and deployed the application on Vercel.
+
+EXPERIENCE
+Voice Artist — Nasheedio
+Part-time
+- Worked as a voice artist, recording and delivering voice-based content according to project requirements.
+- Developed communication, presentation, voice modulation, and content-delivery skills.
+- Collaborated on audio content while maintaining consistency and quality in recordings.
+
+STRENGTHS
+- Problem Solving
+- Logical Thinking
+- Programming Fundamentals
+- Communication
+- Team Collaboration`;
+
+  const raihanExtracted = await ProfileExtractor.extractProfileFromText(raihanResumeText);
+  const rProfile = raihanExtracted.profile;
+
+  assert(rProfile.fullName === 'Raihan Molla', 'Accurately extracts candidate full name: Raihan Molla');
+  assert(rProfile.email === 'raihanmolla9903@gmail.com', 'Accurately extracts email: raihanmolla9903@gmail.com');
+  assert(Boolean(rProfile.phone?.includes('8585844758')), 'Accurately extracts phone: 8585844758');
+  assert(Boolean(rProfile.location?.toLowerCase().includes('asansol')), 'Accurately extracts location: Asansol, west bengal');
+  assert(rProfile.headline === 'Not specified', 'Headline is Not specified (not fabricated)');
+  assert(rProfile.workAuthorization === 'Not specified', 'Work authorization is Not specified (not fabricated)');
+  assert(rProfile.educations?.[0]?.institution.includes('Kazi Nazrul University'), 'Accurately extracts university institution');
+
+  const extractedSkillNames = rProfile.skills.map(s => s.name);
+  assert(extractedSkillNames.includes('Python'), 'Extracts Python skill');
+  assert(extractedSkillNames.includes('Java'), 'Extracts Java skill');
+  assert(extractedSkillNames.includes('C'), 'Extracts C skill');
+  assert(extractedSkillNames.includes('C++'), 'Extracts C++ skill');
+  assert(extractedSkillNames.includes('JavaScript'), 'Extracts JavaScript skill');
+  assert(extractedSkillNames.includes('SQL'), 'Extracts SQL skill');
+  assert(extractedSkillNames.includes('Git'), 'Extracts Git skill');
+  assert(extractedSkillNames.includes('REST APIs'), 'Extracts REST APIs skill');
+  assert(extractedSkillNames.includes('Data Structures & Algorithms'), 'Extracts Data Structures & Algorithms skill');
+  assert(extractedSkillNames.includes('DBMS'), 'Extracts DBMS skill');
+  assert(!extractedSkillNames.includes('TypeScript'), 'Does NOT hallucinate TypeScript (not in resume)');
+
+  // 12. Strict Skill Matching (No False Substring Matches)
+  console.log('\n--- 12. Strict Skill Matching (Zero False Substrings) ---');
+  const rampJob: NormalizedJobPosting = {
+    sourcePlatform: 'JOOBLE',
+    sourceJobId: 'jb_ramp_101',
+    sourceUrl: 'https://jooble.org/jobs/ramp_101',
+    canonicalUrl: 'https://jooble.org/jobs/ramp_101',
+    applicationUrl: 'https://jooble.org/jobs/ramp_101',
+    company: 'Ramp',
+    title: 'Design Engineer',
+    location: 'New York, NY (HQ)',
+    country: 'United States',
+    isRemote: false,
+    remoteType: 'ONSITE',
+    employmentType: 'FULL_TIME',
+    salaryCurrency: 'USD',
+    descriptionRaw: 'Ramp is looking for a Design Engineer. Required skills: Product Engineering, TypeScript, Fullstack, UI/UX, Design Systems.',
+    extractedSkills: ['Product Engineering', 'TypeScript', 'Fullstack', 'Design Systems'],
+    postedAt: new Date(Date.now() - 3600 * 1000 * 24 * 65),
+    updatedAt: new Date()
+  };
+
+  const rampMatch = await JobMatcher.analyzeMatch(rProfile, rampJob);
+  assert(
+    !rampMatch.matchedSkills.includes('TypeScript') &&
+    !rampMatch.matchedSkills.includes('Product Engineering') &&
+    !rampMatch.matchedSkills.includes('Fullstack'),
+    'Candidate with C/Java does NOT falsely match TypeScript, Product Engineering, or Fullstack'
+  );
+  assert(rampMatch.matchedSkills.length === 0, 'Matched skills is empty when candidate has 0 skills from JD');
+  assert(rampMatch.overallScore <= 35, 'Overall match score is low (<35%) for non-matching on-site Design Engineer');
+
+  // 13. Strict Remote Only Filter Verification
+  console.log('\n--- 13. Strict Remote Only Filter Verification ---');
+  const adzunaAdapterInstance = new (await import('../src/services/ingestion/adzuna')).AdzunaAdapter();
+  const joobleAdapterInstance = new (await import('../src/services/ingestion/jooble')).JoobleAdapter();
+
+  const hqJob = joobleAdapterInstance.normalizeJob({
+    id: 'jb_hq_1',
+    title: 'Software Engineer',
+    location: 'New York, NY (HQ)',
+    snippet: 'Engineering role in NY headquarters.',
+    link: 'https://jooble.org/job/1'
+  }, 'HQ Corp');
+  assert(hqJob?.isRemote === false && hqJob?.remoteType === 'ONSITE', 'HQ / On-site job is NOT marked as remote');
+
+  const hybridJob = adzunaAdapterInstance.normalizeJob({
+    id: 'adz_hyb_1',
+    title: 'Full Stack Engineer',
+    company: { display_name: 'Hybrid Corp' },
+    location: { display_name: 'Bengaluru, India (Hybrid)' },
+    description: 'Hybrid work model in Bengaluru office.',
+    redirect_url: 'https://adzuna.com/job/1'
+  }, 'Hybrid Corp');
+  assert(hybridJob?.isRemote === false && hybridJob?.remoteType === 'HYBRID', 'Hybrid job is NOT marked as purely remote');
+
+  const trueRemoteJob = joobleAdapterInstance.normalizeJob({
+    id: 'jb_rem_1',
+    title: 'Python Backend Engineer (Remote)',
+    location: 'Remote',
+    snippet: '100% remote Python backend role.',
+    link: 'https://jooble.org/job/2'
+  }, 'Remote Corp');
+  assert(trueRemoteJob?.isRemote === true && trueRemoteJob?.remoteType === 'REMOTE', 'Explicitly remote job is marked as remote');
 
   console.log('\n====================================================');
   console.log(`🎯 Test Run Finished: ${passed} Passed, ${failed} Failed`);

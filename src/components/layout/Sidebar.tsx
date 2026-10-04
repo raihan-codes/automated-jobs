@@ -37,7 +37,7 @@ export function Sidebar() {
   const { user, openAuthModal, isFirebaseLive } = useAuth();
 
   return (
-    <aside className="w-64 glass-panel border-r border-slate-800/80 min-h-screen flex flex-col justify-between shrink-0 p-4 sticky top-0 hidden md:flex">
+    <aside className="workspace-sidebar w-64 glass-panel border-r border-slate-800/80 min-h-screen flex flex-col justify-between shrink-0 p-4 sticky top-0 hidden md:flex">
       <div>
         {/* Brand Header */}
         <div className="flex items-center gap-3 px-3 py-4 mb-6 border-b border-slate-800/80">

@@ -41,7 +41,7 @@ export class ResumeGenerator {
     ].filter(g => g.skills.length > 0);
 
     // 2. Tailor Summary emphasizing candidate's real capabilities relevant to the target role
-    const years = candidate.yearsOfExperience > 0 ? `${candidate.yearsOfExperience}+ years` : 'proven experience';
+    const years = candidate.yearsOfExperience !== undefined ? `${candidate.yearsOfExperience}+ years` : 'Not specified';
     const topKeywords = prioritizedTech.slice(0, 4).map(s => s.name).join(', ');
     const summary = `${candidate.headline || 'Software Engineer'} with ${years} of experience specializing in ${topKeywords}. Track record of architecting reliable, scalable software solutions with a strong commitment to clean code, performance, and cross-functional product impact.`;
 

@@ -28,7 +28,7 @@ export class JoobleAdapter extends BaseConnector {
 
     const endpoint = `${this.baseUrl}/${apiKey.trim()}`;
     const keywords = (queryOrCompany || 'developer').trim();
-    const location = options?.remoteOnly ? 'Remote' : (options?.query || '');
+    const location = options?.remoteOnly ? 'Remote' : (options?.location || '');
 
     const requestBody = {
       keywords,
@@ -72,7 +72,7 @@ export class JoobleAdapter extends BaseConnector {
     const companyName = raw.company ? JobDeduplicator.cleanHtmlToText(raw.company).trim() : 'Company';
     const title = JobDeduplicator.cleanHtmlToText(raw.title || '').trim();
     const snippet = JobDeduplicator.cleanHtmlToText(raw.snippet || '').trim();
-    const locationStr = raw.location ? JobDeduplicator.cleanHtmlToText(raw.location).trim() : 'Remote';
+    const locationStr = raw.location ? JobDeduplicator.cleanHtmlToText(raw.location).trim() : 'Not specified';
 
     const locInfo = this.resolveLocationAndCountry(locationStr);
     const empType = this.detectEmploymentType(title, `${snippet} ${raw.type || ''}`);
@@ -141,7 +141,7 @@ export class JoobleAdapter extends BaseConnector {
       descriptionHtml: `<p>${snippet || title}</p>`,
       postedAt: postedDate,
       updatedAt: postedDate,
-      extractedSkills: skills.length > 0 ? skills : ['Software Engineering', 'Problem Solving'],
+      extractedSkills: skills,
       experienceLevel: empType === 'INTERNSHIP' ? 'INTERN' : isSenior ? 'SENIOR' : isEntry ? 'ENTRY' : 'MID',
       visaAllowed: true
     };

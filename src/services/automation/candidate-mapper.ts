@@ -183,7 +183,13 @@ export class CandidateMapper {
     // ── 10. Notice Period / Availability ────────────────────────────────────
     else if (/\b(notice.*period|availability|how.*soon|start.*date)\b/i.test(identifier)) {
       category = 'PREFERENCE';
-      const notice = profile.noticePeriod || '30_DAYS';
+      const notice = profile.noticePeriod;
+      if (!notice) {
+        fieldValue = '';
+        confidenceScore = 0.0;
+        status = 'USER_INPUT_REQUIRED';
+        validationError = 'Notice period is not specified in the verified profile.';
+      } else {
       fieldValue = this.matchOptionValue(notice, raw.options, [
         { key: 'IMMEDIATE', labels: ['Immediate', 'Immediately', 'Available Now', '0 days'] },
         { key: '15_DAYS', labels: ['15 days', '2 weeks', '15 Days'] },
@@ -194,6 +200,7 @@ export class CandidateMapper {
       confidenceScore = 0.9;
       status = 'SENSITIVE_REVIEW_REQUIRED';
       validationError = 'Notice period confirmation required.';
+      }
     }
 
     // ── 11. Relocation Preference ───────────────────────────────────────────
@@ -237,7 +244,13 @@ export class CandidateMapper {
     // ── 14. Work Authorization & Right to Work ──────────────────────────────
     else if (/\b(legally.*auth|work.*auth|authoriz.*to.*work|right.*to.*work|eligible.*to.*work)\b/i.test(identifier)) {
       category = 'AUTHORIZATION';
-      const isAuth = !profile.requiresVisa || Boolean(profile.workAuthorization && !/sponsorship/i.test(profile.workAuthorization));
+      if (profile.requiresVisa === undefined && !profile.workAuthorization) {
+        fieldValue = '';
+        confidenceScore = 0.0;
+        status = 'USER_INPUT_REQUIRED';
+        validationError = 'Work authorization is not specified in the verified profile.';
+      } else {
+      const isAuth = profile.requiresVisa === false || Boolean(profile.workAuthorization && !/sponsorship/i.test(profile.workAuthorization));
       if (raw.options && raw.options.length > 0) {
         fieldValue = this.matchYesNoOption(isAuth, raw.options);
       } else {
@@ -246,12 +259,19 @@ export class CandidateMapper {
       confidenceScore = 0.95;
       status = 'SENSITIVE_REVIEW_REQUIRED';
       validationError = 'Legal work authorization declaration requires human review.';
+      }
     }
 
     // ── 15. Visa Sponsorship ────────────────────────────────────────────────
     else if (/\b(sponsorship|require.*visa|need.*sponsorship)\b/i.test(identifier)) {
       category = 'AUTHORIZATION';
       const needsVisa = profile.requiresVisa;
+      if (needsVisa === undefined) {
+        fieldValue = '';
+        confidenceScore = 0.0;
+        status = 'USER_INPUT_REQUIRED';
+        validationError = 'Visa sponsorship requirement is not specified in the verified profile.';
+      } else {
       if (raw.options && raw.options.length > 0) {
         fieldValue = this.matchYesNoOption(needsVisa, raw.options);
       } else {
@@ -260,6 +280,7 @@ export class CandidateMapper {
       confidenceScore = 0.95;
       status = 'SENSITIVE_REVIEW_REQUIRED';
       validationError = 'Visa sponsorship question requires human review.';
+      }
     }
 
     // ── 16. Total Years of Experience (excluding specific skill questions) ──
@@ -268,13 +289,19 @@ export class CandidateMapper {
       (/\b(years.*experience|experience.*years)\b/i.test(identifier) && !/\b(react|java|python|node|sql|aws|go|typescript|c\+\+|angular|vue|docker|kubernetes|rust)\b/i.test(identifier))
     ) {
       category = 'EXPERIENCE';
-      fieldValue = `${profile.yearsOfExperience}`;
-      if (raw.options && raw.options.length > 0) {
-        fieldValue = this.matchNumericOption(profile.yearsOfExperience, raw.options);
+      if (profile.yearsOfExperience === undefined) {
+        fieldValue = '';
+        confidenceScore = 0.0;
+        status = 'USER_INPUT_REQUIRED';
+        validationError = 'Total years of experience are not specified in the verified profile.';
+      } else {
+        fieldValue = `${profile.yearsOfExperience}`;
+        if (raw.options && raw.options.length > 0) {
+          fieldValue = this.matchNumericOption(profile.yearsOfExperience, raw.options);
+        }
+        confidenceScore = 0.95;
+        status = 'SENSITIVE_REVIEW_REQUIRED';
       }
-      confidenceScore = 0.95;
-      status = 'SENSITIVE_REVIEW_REQUIRED';
-
     }
 
     // ── 17. Resume / CV Upload ──────────────────────────────────────────────
@@ -418,15 +445,30 @@ export class CandidateMapper {
       if (matchedSkill) {
         if (/\byears\b/i.test(identifier)) {
           const yrs = matchedSkill.years || profile.yearsOfExperience;
+          if (yrs === undefined) {
+            fieldValue = '';
+            confidenceScore = 0.0;
+            status = 'USER_INPUT_REQUIRED';
+            validationError = `Years of experience with ${matchedSkill.name} are not specified in the verified profile.`;
+          } else {
           fieldValue = raw.options && raw.options.length > 0
             ? this.matchNumericOption(yrs, raw.options)
             : `${yrs}`;
+          }
         } else {
-          fieldValue = `I have ${matchedSkill.years || profile.yearsOfExperience} years of production experience working with ${matchedSkill.name} across scalable systems.`;
+          fieldValue = `I have experience with ${matchedSkill.name}.`;
+          if (!matchedSkill.years && profile.yearsOfExperience === undefined) {
+            fieldValue = '';
+            confidenceScore = 0.0;
+            status = 'USER_INPUT_REQUIRED';
+            validationError = `Experience details for ${matchedSkill.name} are not specified in the verified profile.`;
+          }
         }
-        confidenceScore = 0.9;
-        status = 'SENSITIVE_REVIEW_REQUIRED';
-        validationError = 'Generated screening response requires human review.';
+        if (fieldValue) {
+          confidenceScore = 0.9;
+          status = 'SENSITIVE_REVIEW_REQUIRED';
+          validationError = 'Generated screening response requires human review.';
+        }
       } else {
         // DO NOT FABRICATE: if candidate does not have verified skill, require user input
         fieldValue = '';

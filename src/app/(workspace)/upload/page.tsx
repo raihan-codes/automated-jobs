@@ -29,10 +29,12 @@ import {
   GraduationCap,
   Code2,
   Layers,
-  CheckCircle
+  CheckCircle,
+  ExternalLink
 } from 'lucide-react';
 
 import { useAuth } from '@/lib/firebase/AuthContext';
+import { UrlValidator } from '@/services/validation/url-validator';
 
 const SAMPLE_RESUMES = [
   {
@@ -117,12 +119,12 @@ export default function ResumeUploadPage() {
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
-  const [editLocation, setEditLocation] = useState('Kolkata, West Bengal, India');
+  const [editLocation, setEditLocation] = useState('');
   const [editHeadline, setEditHeadline] = useState('');
-  const [editExperience, setEditExperience] = useState(3);
-  const [editExpectedSalaryLPA, setEditExpectedSalaryLPA] = useState(25);
-  const [editNoticePeriod, setEditNoticePeriod] = useState('30_DAYS');
-  const [editWorkAuth, setEditWorkAuth] = useState('Indian Citizen (Authorized to Work)');
+  const [editExperience, setEditExperience] = useState(0);
+  const [editExpectedSalaryLPA, setEditExpectedSalaryLPA] = useState(0);
+  const [editNoticePeriod, setEditNoticePeriod] = useState('Not specified');
+  const [editWorkAuth, setEditWorkAuth] = useState('Not specified');
   const [editSkillsText, setEditSkillsText] = useState('');
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -211,17 +213,17 @@ export default function ResumeUploadPage() {
       setExtractedData(profile);
       setRecommendations(data.data.recommendations || []);
 
-      // Populate Manual Quick Edit inputs
-      setEditName(profile.fullName || '');
-      setEditEmail(profile.email || '');
-      setEditPhone(profile.phone || '+91 98765 43210');
-      setEditLocation(profile.location || 'Bengaluru, India');
-      setEditHeadline(profile.headline || '');
-      setEditExperience(profile.yearsOfExperience || 3);
-      setEditExpectedSalaryLPA(profile.expectedSalaryLPA || 25);
-      setEditNoticePeriod(profile.noticePeriod || '30_DAYS');
-      setEditWorkAuth(profile.workAuthorization || 'Indian Citizen (Authorized to Work)');
-      setEditSkillsText(profile.skills?.map((s: any) => s.name).join(', ') || 'TypeScript, React, Node.js, PostgreSQL');
+      // Populate Manual Quick Edit inputs strictly from actual extracted profile
+      setEditName(profile.fullName && profile.fullName !== 'Not specified' ? profile.fullName : '');
+      setEditEmail(profile.email && profile.email !== 'Not specified' ? profile.email : '');
+      setEditPhone(profile.phone || '');
+      setEditLocation(profile.location && profile.location !== 'Not specified' ? profile.location : '');
+      setEditHeadline(profile.headline && profile.headline !== 'Not specified' ? profile.headline : '');
+      setEditExperience(profile.yearsOfExperience !== undefined ? profile.yearsOfExperience : 0);
+      setEditExpectedSalaryLPA(profile.expectedSalaryLPA || 0);
+      setEditNoticePeriod(profile.noticePeriod || 'Not specified');
+      setEditWorkAuth(profile.workAuthorization || 'Not specified');
+      setEditSkillsText(profile.skills?.map((s: any) => s.name).join(', ') || '');
 
       setActivePipelineStep(6);
       setProcessingStatus('Step 6/7: Saved master ground-truth to Candidate Profile database...');
@@ -611,7 +613,7 @@ export default function ResumeUploadPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 font-semibold">Salary Expectation:</span>
                   <span className="text-emerald-400 font-mono font-bold">
-                    {extractedData.expectedSalaryLPA ? `₹${extractedData.expectedSalaryLPA} LPA` : (extractedData.minSalary ? `₹${(extractedData.minSalary / 100000).toFixed(0)} LPA` : '₹24 LPA')}
+                    {extractedData.expectedSalaryLPA ? `₹${extractedData.expectedSalaryLPA} LPA` : (extractedData.minSalary ? `₹${(extractedData.minSalary / 100000).toFixed(0)} LPA` : 'Not specified')}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400">
@@ -623,7 +625,7 @@ export default function ResumeUploadPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 font-semibold">Work Authorization / Visa:</span>
                   <span className="text-cyan-300 font-semibold truncate max-w-[200px]">
-                    {extractedData.workAuthorization || 'No Sponsorship Required'}
+                    {extractedData.workAuthorization || 'Not specified'}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400">
@@ -669,9 +671,9 @@ export default function ResumeUploadPage() {
 
               <div className="space-y-1.5">
                 <p className="text-slate-400"><strong className="text-white">Headline:</strong> {extractedData.headline}</p>
-                <p className="text-slate-400"><strong className="text-white">Experience:</strong> {extractedData.yearsOfExperience} Years</p>
-                <p className="text-slate-400"><strong className="text-white">Notice Period:</strong> {extractedData.noticePeriod?.replace(/_/g, ' ') || '30 DAYS'}</p>
-                <p className="text-slate-400"><strong className="text-white">Work Auth:</strong> {extractedData.workAuthorization}</p>
+                <p className="text-slate-400"><strong className="text-white">Experience:</strong> {extractedData.yearsOfExperience !== undefined ? `${extractedData.yearsOfExperience} Years` : 'Not specified'}</p>
+                <p className="text-slate-400"><strong className="text-white">Notice Period:</strong> {extractedData.noticePeriod?.replace(/_/g, ' ') || 'Not specified'}</p>
+                <p className="text-slate-400"><strong className="text-white">Work Auth:</strong> {extractedData.workAuthorization || 'Not specified'}</p>
                 <div>
                   <strong className="text-white">Extracted Skills:</strong>
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -728,7 +730,7 @@ export default function ResumeUploadPage() {
             ) : (
               <div className="grid grid-cols-1 gap-4">
                 {filteredRecommendations.map((job) => {
-                  const applyLink = job.applicationUrl || job.sourceUrl || job.canonicalUrl;
+                  const applyLink = [job.applicationUrl, job.sourceUrl, job.canonicalUrl].find((candidate) => !!candidate && UrlValidator.isAllowedExternalJobUrl(candidate)) || null;
                   const tierInfo = getMatchTierInfo(job.matchScore || 0);
                   const matchedSkillsList = job.matchResult?.matchedSkills || [];
                   const missingSkillsList = job.matchResult?.missingSkills || [];
@@ -871,24 +873,24 @@ export default function ResumeUploadPage() {
                         </div>
 
                         <div className="flex items-center gap-2">
+                          <Link
+                            href={`/jobs/${encodeURIComponent(job.id)}`}
+                            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1 transition-colors border border-slate-700"
+                          >
+                            <span>Match Details</span>
+                          </Link>
                           {applyLink && (
                             <a
                               href={applyLink}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1 transition-colors border border-slate-700"
+                              className="glass-button-primary px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 shadow-md shadow-indigo-600/30"
+                              title={`Apply directly on ${job.company || 'official company site'}`}
                             >
-                              <span>View Job</span>
-                              <ArrowUpRight className="w-3.5 h-3.5" />
+                              <span>Apply on {job.company ? job.company.split(' ')[0] : 'Portal'}</span>
+                              <ExternalLink className="w-3.5 h-3.5" />
                             </a>
                           )}
-                          <Link
-                            href={`/jobs/${encodeURIComponent(job.id)}`}
-                            className="glass-button-primary px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1.5"
-                          >
-                            <span>Tailor & Apply</span>
-                            <ArrowUpRight className="w-3.5 h-3.5" />
-                          </Link>
                         </div>
                       </div>
                     </div>

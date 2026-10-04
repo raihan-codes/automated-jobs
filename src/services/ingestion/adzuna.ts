@@ -45,7 +45,7 @@ export class AdzunaAdapter extends BaseConnector {
       return [];
     }
 
-    const country = this.resolveCountryCode(options?.query || queryOrCompany);
+    const country = this.resolveCountryCode(options?.location || queryOrCompany);
     const searchTerms = (queryOrCompany || 'developer').trim();
     const page = 1;
     const resultsPerPage = 25;
@@ -61,6 +61,8 @@ export class AdzunaAdapter extends BaseConnector {
 
     if (options?.remoteOnly) {
       url.searchParams.set('where', 'remote');
+    } else if (options?.location) {
+      url.searchParams.set('where', options.location);
     }
 
     try {
@@ -95,7 +97,7 @@ export class AdzunaAdapter extends BaseConnector {
     const companyName = raw.company?.display_name?.trim() || 'Company';
     const title = JobDeduplicator.cleanHtmlToText(raw.title || '').trim();
     const descriptionRaw = JobDeduplicator.cleanHtmlToText(raw.description || '').trim();
-    const locationStr = raw.location?.display_name || 'Remote';
+    const locationStr = raw.location?.display_name?.trim() || 'Not specified';
 
     const locInfo = this.resolveLocationAndCountry(locationStr);
     const empType = this.detectEmploymentType(title, descriptionRaw);
@@ -146,7 +148,7 @@ export class AdzunaAdapter extends BaseConnector {
       descriptionHtml: `<p>${descriptionRaw || title}</p>`,
       postedAt: postedDate,
       updatedAt: postedDate,
-      extractedSkills: skills.length > 0 ? skills : ['Software Engineering', 'Problem Solving'],
+      extractedSkills: skills,
       experienceLevel: empType === 'INTERNSHIP' ? 'INTERN' : isSenior ? 'SENIOR' : isEntry ? 'ENTRY' : 'MID',
       visaAllowed: true
     };

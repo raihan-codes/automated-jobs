@@ -89,6 +89,15 @@ export interface SubmissionVerification {
 export type JobPlatform =
   | 'ADZUNA'
   | 'JOOBLE'
+  | 'GREENHOUSE'
+  | 'LEVER'
+  | 'ASHBY'
+  | 'WORKABLE'
+  | 'ARBEITNOW'
+  | 'WELLFOUND'
+  | 'LINKEDIN'
+  | 'INDEED'
+  | 'CAREER_PAGES'
   | 'DIRECT';
 
 export type ApplicationMethod =
@@ -116,16 +125,16 @@ export interface CandidateProfileData {
   // Job Search Constraints & Compensation
   desiredTitles: string[];
   preferredLocations: string[];
-  remotePreference: RemotePreference;
+  remotePreference?: RemotePreference;
   minSalary?: number;
   currentSalaryLPA?: number; // In Lakhs Per Annum (e.g. 18 LPA)
   currentCTC?: string;        // Explicit string representation (e.g. "₹18,00,000")
   expectedSalaryLPA?: number; // In Lakhs Per Annum (e.g. 25 LPA)
   expectedCTC?: string;       // Explicit string representation (e.g. "₹25,00,000")
   noticePeriod?: 'IMMEDIATE' | '15_DAYS' | '30_DAYS' | '60_DAYS' | '90_DAYS' | string;
-  requiresVisa: boolean;
+  requiresVisa?: boolean;
   workAuthorization?: string; // e.g. "Indian Citizen", "No Sponsorship Needed"
-  yearsOfExperience: number;
+  yearsOfExperience?: number;
   relocationPreference?: 'WILLING_TO_RELOCATE' | 'NOT_WILLING' | 'NEGOTIABLE' | boolean;
   emailAlertPreferences?: boolean;
   
@@ -143,7 +152,7 @@ export interface CandidateSkillData {
   name: string;
   category: 'TECHNICAL' | 'FRAMEWORK' | 'TOOL' | 'SOFT';
   years?: number;
-  level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
+  level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' | 'NOT_SPECIFIED';
 }
 
 export interface ExperienceData {

@@ -1,14 +1,138 @@
 // Multi-tier Deterministic AI Job Matching & Scoring Engine
-// Evaluates real jobs from Adzuna & Jooble against candidate profile across 10 core dimensions
+// Evaluates real jobs from Adzuna & Jooble against candidate profile across core dimensions
 // Produces a genuine, reproducible 0% - 100% match score, matched skills, missing skills, and grounded explanations.
+// Strictly prevents hallucinated or false substring skill matches (e.g. 'C' matching 'TypeScript' or 'Java' matching 'JavaScript').
 
 import { CandidateProfileData, NormalizedJobPosting, MatchAnalysisResult } from '@/types';
 import { JDAnalyzer } from './jd-analyzer';
 
 export class JobMatcher {
   /**
+   * Canonicalizes a skill string to its normalized standard key.
+   */
+  public static canonicalizeSkill(skill: string): string {
+    const s = skill.trim().toLowerCase();
+    if (/^python(?:3|2)?$/i.test(s)) return 'python';
+    if (/^(?:java\s*script|javascript|js|ecmascript)$/i.test(s)) return 'javascript';
+    if (/^(?:typescript|ts)$/i.test(s)) return 'typescript';
+    if (/^java$/i.test(s)) return 'java';
+    if (/^(?:c\+\+|cpp|c\/c\+\+)$/i.test(s)) return 'c++';
+    if (/^(?:c#|csharp|\.net)$/i.test(s)) return 'c#';
+    if (/^c$/i.test(s)) return 'c';
+    if (/^(?:golang|go|go\s*language)$/i.test(s)) return 'go';
+    if (/^rust$/i.test(s)) return 'rust';
+    if (/^php$/i.test(s)) return 'php';
+    if (/^ruby$/i.test(s)) return 'ruby';
+    if (/^swift$/i.test(s)) return 'swift';
+    if (/^kotlin$/i.test(s)) return 'kotlin';
+    if (/^scala$/i.test(s)) return 'scala';
+    if (/^r$/i.test(s)) return 'r';
+    if (/^(?:sql|structured\s+query\s+language|pl\/sql|t-sql)$/i.test(s)) return 'sql';
+    if (/^html(?:5)?$/i.test(s)) return 'html5';
+    if (/^css(?:3)?$/i.test(s)) return 'css3';
+    if (/^(?:react|react\.js|reactjs)$/i.test(s)) return 'react';
+    if (/^(?:next\.js|nextjs|next)$/i.test(s)) return 'next.js';
+    if (/^(?:node\.js|nodejs|node)$/i.test(s)) return 'node.js';
+    if (/^(?:express\.js|expressjs|express)$/i.test(s)) return 'express.js';
+    if (/^(?:spring\s*boot|spring\s*framework)$/i.test(s)) return 'spring boot';
+    if (/^(?:django)$/i.test(s)) return 'django';
+    if (/^(?:fastapi)$/i.test(s)) return 'fastapi';
+    if (/^(?:flask)$/i.test(s)) return 'flask';
+    if (/^(?:postgresql|postgres|psql)$/i.test(s)) return 'postgresql';
+    if (/^(?:mysql)$/i.test(s)) return 'mysql';
+    if (/^(?:mongodb|mongo)$/i.test(s)) return 'mongodb';
+    if (/^(?:redis)$/i.test(s)) return 'redis';
+    if (/^(?:indexeddb)$/i.test(s)) return 'indexeddb';
+    if (/^(?:kafka|apache\s*kafka)$/i.test(s)) return 'kafka';
+    if (/^(?:docker)$/i.test(s)) return 'docker';
+    if (/^(?:kubernetes|k8s)$/i.test(s)) return 'kubernetes';
+    if (/^(?:aws|amazon\s*web\s*services)$/i.test(s)) return 'aws';
+    if (/^(?:gcp|google\s*cloud)$/i.test(s)) return 'gcp';
+    if (/^(?:azure|microsoft\s*azure)$/i.test(s)) return 'azure';
+    if (/^(?:git|github|gitlab)$/i.test(s)) return 'git';
+    if (/^(?:linux|unix)$/i.test(s)) return 'linux';
+    if (/^(?:rest\s*apis?|restful|rest\/api|rest\/api\s*fundamentals|api\s*fundamentals)$/i.test(s)) return 'rest apis';
+    if (/^(?:data\s*structures\s*&\s*algorithms|data\s*structures|algorithms|dsa)$/i.test(s)) return 'data structures & algorithms';
+    if (/^(?:object-?oriented\s*programming|oop|oops|object-oriented\s*design)$/i.test(s)) return 'object-oriented programming';
+    if (/^(?:dbms|database\s*management\s*systems?|rdbms)$/i.test(s)) return 'dbms';
+    if (/^(?:computer\s*architecture|computer\s*organization)$/i.test(s)) return 'computer architecture';
+    if (/^(?:operating\s*systems?|os|operating\/computer\s*fundamentals|operating\s*system\s*fundamentals)$/i.test(s)) return 'operating systems';
+    if (/^(?:web\s*development|web\s*development\s*fundamentals)$/i.test(s)) return 'web development';
+    if (/^(?:problem\s*solving)$/i.test(s)) return 'problem solving';
+    if (/^(?:communication)$/i.test(s)) return 'communication';
+    if (/^(?:team\s*collaboration|teamwork|cross-functional\s*collaboration|collaboration)$/i.test(s)) return 'team collaboration';
+    if (/^(?:logical\s*thinking)$/i.test(s)) return 'logical thinking';
+    if (/^(?:data\s*science|data\s*analytics)$/i.test(s)) return 'data science';
+    return s;
+  }
+
+  /**
+   * Tests whether a specific skill is explicitly present in candidate's profile/skills list or text corpus.
+   * Strictly uses word boundaries to prevent substring collisions (e.g. 'c' within 'TypeScript').
+   */
+  public static isSkillInCandidate(skill: string, candidate: CandidateProfileData, candidateCorpus: string): boolean {
+    const canonTarget = JobMatcher.canonicalizeSkill(skill);
+
+    // 1. Direct match against candidate's structured skills list
+    for (const candSkill of candidate.skills || []) {
+      const canonCand = JobMatcher.canonicalizeSkill(candSkill.name);
+      if (canonCand === canonTarget) {
+        return true;
+      }
+    }
+
+    // 2. Strict word boundary check in candidate text corpus
+    const escaped = canonTarget.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let regex: RegExp;
+    if (canonTarget === 'c') {
+      regex = /\b(?:c\s+language|c\s+programming|\bc\b(?=\s*[,/•&+]|\s+programming|\s+language))\b/i;
+    } else if (canonTarget === 'r') {
+      regex = /\b(?:r\s+language|r\s+programming|\br\b(?=\s*[,/•&+]|\s+programming|\s+data))\b/i;
+    } else if (canonTarget === 'go') {
+      regex = /\b(?:golang|go\s+language|\bgo\b(?!\s+(?:to|for|with|and|through|ahead)))\b/i;
+    } else if (canonTarget === 'java') {
+      regex = /\bjava\b(?!\s*script)/i;
+    } else {
+      regex = new RegExp(`\\b${escaped}\\b`, 'i');
+    }
+
+    return regex.test(candidateCorpus);
+  }
+
+  /**
+   * Tests whether a skill is required or mentioned in the real Job Description text or title.
+   */
+  public static isSkillInJob(skill: string, jobTitleAndText: string, jobExtractedSkills: string[]): boolean {
+    const canonTarget = JobMatcher.canonicalizeSkill(skill);
+
+    // Check pre-extracted job skills
+    for (const js of jobExtractedSkills) {
+      if (JobMatcher.canonicalizeSkill(js) === canonTarget) {
+        return true;
+      }
+    }
+
+    // Strict word boundary check in job description
+    const escaped = canonTarget.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let regex: RegExp;
+    if (canonTarget === 'c') {
+      regex = /\b(?:c\s+language|c\s+programming|\bc\b(?=\s*[,/•&+]|\s+programming|\s+language))\b/i;
+    } else if (canonTarget === 'r') {
+      regex = /\b(?:r\s+language|r\s+programming|\br\b(?=\s*[,/•&+]|\s+programming|\s+data))\b/i;
+    } else if (canonTarget === 'go') {
+      regex = /\b(?:golang|go\s+language|\bgo\b(?!\s+(?:to|for|with|and|through|ahead)))\b/i;
+    } else if (canonTarget === 'java') {
+      regex = /\bjava\b(?!\s*script)/i;
+    } else {
+      regex = new RegExp(`\\b${escaped}\\b`, 'i');
+    }
+
+    return regex.test(jobTitleAndText);
+  }
+
+  /**
    * Evaluates match compatibility between a candidate profile and a normalized real job posting.
-   * Completely deterministic: no random jitter, no artificial clamping floor.
+   * Completely deterministic: no random jitter, no artificial clamping floor, no fabricated skills.
    */
   public static async analyzeMatch(
     candidate: CandidateProfileData,
@@ -35,24 +159,22 @@ export class JobMatcher {
       };
     }
 
-    // ── 2. Extract JD Requirements & Skills ─────────────────────────────────
+    // ── 2. Build Job Requirements Corpus ────────────────────────────────────
     const combinedJDText = `${job.title}\n${job.company}\n${job.location}\n${job.descriptionRaw || ''}`;
     const jdReqs = JDAnalyzer.extractRequirements(combinedJDText);
 
-    // Also include any pre-extracted skills on the job object
     const allJdSkillsSet = new Set<string>();
     jdReqs.requiredSkills.forEach(s => allJdSkillsSet.add(s));
     (job.extractedSkills || []).forEach(s => allJdSkillsSet.add(s));
     const jdSkills = Array.from(allJdSkillsSet);
 
     // ── 3. Build Candidate Search Tokens & Skills Corpus ────────────────────
-    const candidateSkillNames = (candidate.skills || []).map(s => s.name.toLowerCase());
     const candidateSkillsRaw = (candidate.skills || []).map(s => s.name);
 
     const candidateCorpusParts: string[] = [
       candidate.fullName || '',
-      candidate.headline || '',
-      candidate.summary || '',
+      candidate.headline && candidate.headline !== 'Not specified' ? candidate.headline : '',
+      candidate.summary && candidate.summary !== 'Not specified' ? candidate.summary : '',
       ...candidateSkillsRaw,
       ...(candidate.desiredTitles || []),
       ...(candidate.experiences || []).flatMap(e => [
@@ -78,226 +200,150 @@ export class JobMatcher {
 
     const candidateCorpus = candidateCorpusParts.join(' ').toLowerCase();
 
-    // ── 4. Skills & Required Technology Overlap (Dimension 1 & 2) ────────────
+    // ── 4. Strict Skills Overlap Calculation ─────────────────────────────────
     const matchedSkills: string[] = [];
     const missingSkills: string[] = [];
 
-    const normalizeSkillName = (s: string) => {
-      const lower = s.toLowerCase();
-      if (lower.includes('golang') || lower === 'go') return 'go';
-      if (lower.includes('react')) return 'react';
-      if (lower.includes('next')) return 'next.js';
-      if (lower.includes('postgres')) return 'postgresql';
-      if (lower.includes('power bi') || lower === 'powerbi') return 'power bi';
-      if (lower.includes('machine learning') || lower === 'ml') return 'machine learning';
-      if (lower.includes('tailwind')) return 'tailwind css';
-      if (lower.includes('spring')) return 'spring boot';
-      if (lower.includes('node')) return 'node.js';
-      if (lower.includes('aws') || lower.includes('amazon web')) return 'aws';
-      if (lower.includes('gcp') || lower.includes('google cloud')) return 'gcp';
-      return lower;
-    };
-
-    const isCandidateSkillMatched = (jdSkill: string): boolean => {
-      const normJd = normalizeSkillName(jdSkill);
-      const jdLower = jdSkill.toLowerCase();
-
-      // Check against candidate skill list
-      for (const cs of candidateSkillNames) {
-        const normCs = normalizeSkillName(cs);
-        if (normCs === normJd || cs === jdLower || cs.includes(jdLower) || jdLower.includes(cs)) {
-          return true;
-        }
-      }
-
-      // Check against candidate full resume corpus (projects, experiences, summary)
-      const escaped = jdLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`\\b${escaped}\\b`, 'i');
-      return regex.test(candidateCorpus);
-    };
-
     if (jdSkills.length > 0) {
       for (const skill of jdSkills) {
-        if (isCandidateSkillMatched(skill)) {
+        if (JobMatcher.isSkillInCandidate(skill, candidate, candidateCorpus)) {
           matchedSkills.push(skill);
         } else {
           missingSkills.push(skill);
         }
       }
     } else {
-      // If JD didn't explicitly list standard keywords, test candidate's skills against JD description
+      // If JD didn't explicitly list discrete taxonomy keywords, evaluate candidate's actual skills against JD text
       for (const candSkill of candidateSkillsRaw) {
-        const skillLower = candSkill.toLowerCase();
-        const escaped = skillLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`\\b${escaped}\\b`, 'i');
-        if (regex.test(combinedJDText)) {
+        if (JobMatcher.isSkillInJob(candSkill, combinedJDText, job.extractedSkills || [])) {
           matchedSkills.push(candSkill);
         }
       }
     }
 
-    // Skills Score (0 - 100)
+    // Compute Skills Score (0 - 100)
     let skillsScore = 0;
     if (jdSkills.length > 0) {
       const ratio = matchedSkills.length / jdSkills.length;
       skillsScore = Math.round(ratio * 100);
     } else if (matchedSkills.length > 0) {
-      skillsScore = Math.min(100, matchedSkills.length * 20);
+      skillsScore = Math.min(100, matchedSkills.length * 25);
     } else {
-      // General title overlap fallback
-      skillsScore = 20;
+      skillsScore = 0;
     }
 
-    // ── 5. Job Title & Role Affinity (Dimension 3) ──────────────────────────
+    // ── 5. Job Title & Role Affinity (Dimension 2) ──────────────────────────
     const titleLower = job.title.toLowerCase();
     const candidateDesired = (candidate.desiredTitles || []).map(t => t.toLowerCase());
-    const candidateHeadline = (candidate.headline || '').toLowerCase();
+    const candEducationTitles = (candidate.educations || []).map(e => `${e.degree} ${e.fieldOfStudy || ''}`.toLowerCase()).join(' ');
 
-    let titleAffinityScore = 15; // default base if completely different
+    let titleAffinityScore = 15; // default base for different roles
 
-    // Check exact title token overlaps
-    const titleTokens = titleLower.split(/[\s,./\-|—()]+/).filter(t => t.length > 2 && !['senior', 'junior', 'lead', 'staff', 'intern', 'developer', 'engineer'].includes(t));
-    const candidateTitleTokens = candidateDesired.join(' ').split(/[\s,./\-|—()]+/).filter(t => t.length > 2 && !['senior', 'junior', 'lead', 'staff', 'intern', 'developer', 'engineer'].includes(t));
+    // Check desired titles or role keywords
+    const matchesDesired = candidateDesired.some(desired => desired.length > 2 && (titleLower.includes(desired) || desired.includes(titleLower)));
 
-    const matchesAnyDesired = candidateDesired.some(desired => {
-      return titleLower.includes(desired) || desired.includes(titleLower);
-    });
-
-    if (matchesAnyDesired) {
+    if (matchesDesired) {
       titleAffinityScore = 95;
     } else {
-      // Token overlap ratio
-      const sharedTokens = titleTokens.filter(t => candidateTitleTokens.includes(t) || candidateCorpus.includes(t));
-      if (titleTokens.length > 0) {
-        const tokenRatio = sharedTokens.length / titleTokens.length;
-        if (tokenRatio >= 0.75) titleAffinityScore = 90;
-        else if (tokenRatio >= 0.5) titleAffinityScore = 75;
-        else if (tokenRatio >= 0.25) titleAffinityScore = 50;
-        else titleAffinityScore = 25;
-      }
-      // Check headline affinity
-      if (candidateHeadline.includes(titleLower) || titleTokens.some(t => candidateHeadline.includes(t))) {
-        titleAffinityScore = Math.max(titleAffinityScore, 70);
+      // Check tech student / engineering domain overlap
+      const isTechJob = /software|developer|engineer|full\s*stack|frontend|backend|data|python|web|react|node|intern/i.test(titleLower);
+      const isTechCandidate = /computer\s*science|data\s*science|engineering|software|developer/i.test(candEducationTitles) ||
+        candidateSkillsRaw.some(s => /python|java|javascript|c\+\+|sql|react|node|git/i.test(s));
+
+      if (isTechJob && isTechCandidate) {
+        // Specific role alignment
+        if (/intern|internship|trainee|apprentice/i.test(titleLower)) {
+          titleAffinityScore = 90;
+        } else if (/software\s*engineer|developer|full\s*stack|backend|frontend/i.test(titleLower)) {
+          titleAffinityScore = 80;
+        } else if (/data\s*analyst|data\s*science|ai|ml/i.test(titleLower)) {
+          titleAffinityScore = /data/i.test(candEducationTitles) ? 90 : 75;
+        } else {
+          titleAffinityScore = 50;
+        }
+      } else if (!isTechJob && isTechCandidate) {
+        // e.g. Sales, Marketing, Design Engineer with zero overlap
+        titleAffinityScore = 10;
       }
     }
 
-    // ── 6. Experience & Seniority Level Compatibility (Dimension 4) ─────────
-    const candExpYears = candidate.yearsOfExperience || 0;
+    // ── 6. Experience & Seniority Level Compatibility (Dimension 3) ─────────
+    const candExpYears = candidate.yearsOfExperience ?? 0;
     const reqYears = jdReqs.yearsRequired;
-    const isInternJob = jdReqs.isInternship || job.employmentType === 'INTERNSHIP';
-    const isCandIntern = candExpYears <= 1 && (candidate.desiredTitles.some(t => /intern/i.test(t)) || /intern|student/i.test(candidateCorpus));
+    const isInternJob = jdReqs.isInternship || job.employmentType === 'INTERNSHIP' || /intern|internship|trainee/i.test(job.title);
+    const isStudentOrNewGrad = candExpYears <= 1 || (candidate.educations || []).some(e => {
+      const endYear = parseInt(e.endDate || '0', 10);
+      return endYear >= new Date().getFullYear();
+    });
 
-    let experienceScore = 75;
+    let experienceScore = 50;
 
     if (isInternJob) {
-      if (isCandIntern || candExpYears <= 2) {
+      if (isStudentOrNewGrad) {
         experienceScore = 95;
       } else {
-        experienceScore = 60; // Overqualified for intern
+        experienceScore = 60;
       }
     } else {
       const expDelta = candExpYears - reqYears;
-      if (expDelta >= 0 && expDelta <= 3) {
-        experienceScore = 95; // Ideal experience window
-      } else if (expDelta > 3) {
-        experienceScore = 85; // Slightly more senior than required
+      if (expDelta >= 0 && expDelta <= 2) {
+        experienceScore = 90;
       } else if (expDelta === -1) {
-        experienceScore = 75; // 1 year under, can easily bridge
+        experienceScore = 70;
       } else if (expDelta === -2) {
-        experienceScore = 55;
-      } else if (expDelta === -3) {
-        experienceScore = 35;
+        experienceScore = 45;
+      } else if (expDelta <= -3) {
+        experienceScore = 15;
       } else {
-        experienceScore = Math.max(10, 30 + expDelta * 10);
+        experienceScore = 75;
       }
     }
 
-    // ── 7. Education & Certification Relevance (Dimension 5 & 7) ────────────
-    let educationScore = 70;
-    const candDegrees = (candidate.educations || []).map(e => `${e.degree} ${e.fieldOfStudy || ''}`.toLowerCase()).join(' ');
-    
-    if (jdReqs.requiredDegree) {
-      const reqDegLower = jdReqs.requiredDegree.toLowerCase();
-      if (candDegrees.includes(reqDegLower) || /b\.?tech|b\.?s|b\.?e|computer\s+science/i.test(candDegrees)) {
-        educationScore = 95;
-      } else {
-        educationScore = 50;
-      }
-    } else if (candDegrees.length > 0) {
-      educationScore = 85;
+    // ── 7. Education Relevance (Dimension 4) ─────────────────────────────────
+    let educationScore = 60;
+    if (/computer\s*science|data\s*science|b\.?tech|b\.?e|engineering/i.test(candEducationTitles)) {
+      educationScore = 90;
+    } else if (candEducationTitles.length > 0) {
+      educationScore = 75;
     }
 
-    // Certifications boost if relevant
-    if ((candidate.certifications || []).length > 0) {
-      const hasCloudCert = candidate.certifications?.some(c => /aws|azure|gcp|kubernetes|cka/i.test(c.name));
-      const jobRequiresCloud = /aws|azure|gcp|cloud|kubernetes/i.test(combinedJDText);
-      if (hasCloudCert && jobRequiresCloud) {
-        educationScore = Math.min(100, educationScore + 10);
-      }
-    }
-
-    // ── 8. Project & Semantic Relevance (Dimension 6 & 10) ───────────────────
-    const jdTokens = combinedJDText
-      .toLowerCase()
-      .split(/[^a-z0-9+#.]+/)
-      .filter(t => t.length > 3 && !['with', 'from', 'have', 'this', 'that', 'they', 'will', 'about', 'your', 'working'].includes(t));
-
-    const uniqueJdTokens = Array.from(new Set(jdTokens));
-    let matchingTokensCount = 0;
-
-    for (const token of uniqueJdTokens.slice(0, 100)) {
-      if (candidateCorpus.includes(token)) {
-        matchingTokensCount++;
-      }
-    }
-
-    const semanticRatio = uniqueJdTokens.length > 0
-      ? matchingTokensCount / Math.min(uniqueJdTokens.length, 60)
-      : 0.5;
-
-    const semanticScore = Math.min(100, Math.round(semanticRatio * 100));
-
-    // ── 9. Location & Employment Type Compatibility (Dimension 8 & 9) ───────
-    let locationScore = 80;
-    if (job.isRemote) {
+    // ── 8. Location & Work Mode Fit (Dimension 5) ───────────────────────────
+    let locationScore = 50;
+    if (job.isRemote && job.remoteType === 'REMOTE') {
       locationScore = 95;
-    } else if (candidate.location && job.location) {
+    } else if (candidate.location && candidate.location !== 'Not specified' && job.location && job.location !== 'Not specified') {
       const candLoc = candidate.location.toLowerCase();
       const jobLoc = job.location.toLowerCase();
       if (candLoc.includes(jobLoc) || jobLoc.includes(candLoc) || (candLoc.includes('india') && jobLoc.includes('india'))) {
-        locationScore = 95;
+        locationScore = 90;
       } else {
-        locationScore = 65;
+        locationScore = 30; // On-site in different city/country
       }
     }
 
-    // ── 10. Composite Deterministic Score Calculation (0% - 100%) ───────────
+    // ── 9. Composite Deterministic Score Calculation ────────────────────────
     // Weights:
-    // Skills & Required Technologies: 40%
-    // Job Title & Role Affinity: 25%
-    // Experience & Seniority Level: 15%
-    // Semantic / Project / Education Fit: 15%
-    // Location & Type Fit: 5%
-    const rawScore = (
-      skillsScore * 0.40 +
+    // Skills Overlap: 45%
+    // Title & Domain Affinity: 25%
+    // Experience Fit: 20%
+    // Location & Education: 10%
+    let calculatedScore = Math.round(
+      skillsScore * 0.45 +
       titleAffinityScore * 0.25 +
-      experienceScore * 0.15 +
-      ((semanticScore * 0.6 + educationScore * 0.4) * 0.15) +
-      locationScore * 0.05
+      experienceScore * 0.20 +
+      ((locationScore * 0.5 + educationScore * 0.5) * 0.10)
     );
 
-    // If zero skills match and zero title affinity, ensure score drops naturally to low score
-    let calculatedScore = Math.round(rawScore);
-    if (matchedSkills.length === 0 && titleAffinityScore <= 25) {
-      calculatedScore = Math.min(25, calculatedScore);
-    }
-    if (matchedSkills.length === 0 && missingSkills.length > 3) {
-      calculatedScore = Math.min(30, calculatedScore);
+    // If zero skills match and title affinity is low, ensure score drops to low match (<35%)
+    if (matchedSkills.length === 0) {
+      if (skillsScore === 0) {
+        calculatedScore = Math.min(30, Math.round(calculatedScore * 0.4));
+      }
     }
 
     const overallScore = Math.max(0, Math.min(100, calculatedScore));
 
-    // ── 11. Match Tier Classification ───────────────────────────────────────
+    // ── 10. Match Tier Classification ───────────────────────────────────────
     let matchTier: 'EXCELLENT' | 'STRONG' | 'GOOD' | 'MODERATE' | 'PARTIAL' | 'LOW' = 'LOW';
     let matchTierLabel = 'Low Match';
 
@@ -321,43 +367,43 @@ export class JobMatcher {
       matchTierLabel = 'Low Match';
     }
 
-    // ── 12. Grounded Explanation Synthesizer ─────────────────────────────────
+    // ── 11. Grounded Explanation Synthesizer ─────────────────────────────────
     let whyMatchReason = '';
     const topMatched = matchedSkills.slice(0, 5).join(', ');
-    const topMissing = missingSkills.slice(0, 3).join(', ');
+    const topMissing = missingSkills.slice(0, 4).join(', ');
 
     if (overallScore >= 80) {
       if (matchedSkills.length > 0) {
-        whyMatchReason = `Strong match because your resume contains ${topMatched}, which are relevant to this position at ${job.company}.`;
+        whyMatchReason = `Strong match because your resume contains ${topMatched}, which are directly relevant to this position at ${job.company}.`;
       } else {
-        whyMatchReason = `Strong alignment with ${job.company}'s requirements based on your candidate profile and experience in ${candidate.headline || 'Software Engineering'}.`;
+        whyMatchReason = `Strong alignment with ${job.company}'s requirements based on your engineering background and domain competencies.`;
       }
     } else if (overallScore >= 60) {
       if (matchedSkills.length > 0) {
-        whyMatchReason = `Good match with technical overlap in ${topMatched}.`;
+        whyMatchReason = `Good match with verified skill overlap in ${topMatched}.`;
       } else {
         whyMatchReason = `Moderate alignment with role requirements at ${job.company}.`;
       }
       if (missingSkills.length > 0) {
-        whyMatchReason += ` Key skills not found in resume: ${topMissing}.`;
+        whyMatchReason += ` Additional JD requirements: ${topMissing}.`;
       }
     } else if (overallScore >= 40) {
       if (matchedSkills.length > 0) {
-        whyMatchReason = `Partial match with some overlap in ${topMatched}, but position requires additional skills (${topMissing || 'specialized tech'}).`;
+        whyMatchReason = `Partial match with some overlap in ${topMatched}, but position requires additional skills (${topMissing || 'specialized tools'}).`;
       } else {
-        whyMatchReason = `Partial match based on general domain experience; required core technologies (${topMissing || 'listed above'}) were not identified in resume.`;
+        whyMatchReason = `Partial match based on general domain background; position requires specific skills (${topMissing || 'listed above'}) not found in resume.`;
       }
     } else {
       whyMatchReason = `Low match. The role at ${job.company} primarily requires ${topMissing || jdSkills.slice(0, 3).join(', ') || 'skills'} which differ from your resume profile.`;
     }
 
     const potentialConcerns = missingSkills.length > 0
-      ? `Missing/less-matched skill: ${topMissing}.`
+      ? `Required skills not in resume: ${topMissing}.`
       : undefined;
 
     const suggestedAngle = matchedSkills.length > 0
       ? `Emphasize hands-on experience with ${topMatched} when tailoring your application.`
-      : `Highlight transferable engineering and analytical competencies for this role.`;
+      : `Highlight transferable software engineering competencies and quick-learning aptitude.`;
 
     return {
       overallScore,
@@ -368,7 +414,7 @@ export class JobMatcher {
       experienceScore,
       domainScore: titleAffinityScore,
       educationScore,
-      semanticScore,
+      semanticScore: skillsScore,
       matchedSkills,
       missingSkills,
       whyMatchReason,

@@ -56,7 +56,7 @@ export class JDAnalyzer {
 
     // 4. Internship vs Full-Time
     const isInternJob = job.employmentType === 'INTERNSHIP' || /intern|internship/i.test(job.title);
-    const isExperiencedCandidate = candidate.yearsOfExperience >= 3;
+    const isExperiencedCandidate = (candidate.yearsOfExperience ?? 0) >= 3;
     if (isInternJob && isExperiencedCandidate && !candidate.desiredTitles.some(t => /intern/i.test(t))) {
       return {
         passed: false,
