@@ -9,6 +9,99 @@
   :root {
     --cursor-x: 0px;
     --cursor-y: 0px;
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    --surface: #ffffff;
+    --surface-dim: #f1f5f9;
+    --surface-bright: #ffffff;
+    --surface-container-lowest: #ffffff;
+    --surface-container-low: #f8fafc;
+    --surface-container: #f1f5f9;
+    --surface-container-high: #e2e8f0;
+    --surface-container-highest: #cbd5e1;
+    --surface-variant: #e2e8f0;
+    --surface-tint: #4f46e5;
+    --on-surface: #0f172a;
+    --on-surface-variant: #475569;
+    --on-background: #0f172a;
+    --outline: #94a3b8;
+    --outline-variant: #e2e8f0;
+    --primary: #4f46e5;
+    --primary-container: #6366f1;
+    --on-primary: #ffffff;
+    --on-primary-container: #dad7ff;
+    --primary-fixed: #e2dfff;
+    --primary-fixed-dim: #c3c0ff;
+    --on-primary-fixed: #0f0069;
+    --on-primary-fixed-variant: #3323cc;
+    --secondary: #00687a;
+    --secondary-container: #57dffe;
+    --secondary-fixed: #acedff;
+    --secondary-fixed-dim: #4cd7f6;
+    --on-secondary: #ffffff;
+    --on-secondary-container: #006172;
+    --on-secondary-fixed: #001f26;
+    --on-secondary-fixed-variant: #004e5c;
+    --tertiary: #571ac0;
+    --tertiary-container: #6f3dd9;
+    --tertiary-fixed: #e9ddff;
+    --tertiary-fixed-dim: #d0bcff;
+    --on-tertiary: #ffffff;
+    --on-tertiary-container: #e3d5ff;
+    --on-tertiary-fixed: #23005c;
+    --on-tertiary-fixed-variant: #5516be;
+    --error: #ba1a1a;
+    --error-container: #ffdad6;
+    --on-error: #ffffff;
+    --on-error-container: #93000a;
+  }
+
+  .dark {
+    --background: #090e17;
+    --foreground: #f1f5f9;
+    --surface: #0b121e;
+    --surface-dim: #070c14;
+    --surface-bright: #141f33;
+    --surface-container-lowest: #0e1626;
+    --surface-container-low: #131d31;
+    --surface-container: #192640;
+    --surface-container-high: #213150;
+    --surface-container-highest: #2b3e64;
+    --surface-variant: #1e293b;
+    --surface-tint: #6366f1;
+    --on-surface: #f8faff;
+    --on-surface-variant: #94a3b8;
+    --on-background: #f8faff;
+    --outline: #64748b;
+    --outline-variant: #334155;
+    --primary: #6366f1;
+    --primary-container: #4f46e5;
+    --on-primary: #ffffff;
+    --on-primary-container: #e0e7ff;
+    --primary-fixed: #312e81;
+    --primary-fixed-dim: #3730a3;
+    --on-primary-fixed: #e0e7ff;
+    --on-primary-fixed-variant: #c7d2fe;
+    --secondary: #06b6d4;
+    --secondary-container: #0891b2;
+    --secondary-fixed: #164e63;
+    --secondary-fixed-dim: #155e75;
+    --on-secondary: #ffffff;
+    --on-secondary-container: #cffafe;
+    --on-secondary-fixed: #e0f2fe;
+    --on-secondary-fixed-variant: #a5f3fc;
+    --tertiary: #a855f7;
+    --tertiary-container: #7e22ce;
+    --tertiary-fixed: #581c87;
+    --tertiary-fixed-dim: #6b21a8;
+    --on-tertiary: #ffffff;
+    --on-tertiary-container: #f3e8ff;
+    --on-tertiary-fixed: #fae8ff;
+    --on-tertiary-fixed-variant: #e9d5ff;
+    --error: #ef4444;
+    --error-container: #450a0a;
+    --on-error: #ffffff;
+    --on-error-container: #fecaca;
   }
 
   /* Hide native cursor only on the marketing landing page, which
@@ -23,19 +116,49 @@
   }
 
   body {
-    @apply bg-ink-950 text-mist-100 font-body overflow-x-hidden;
+    @apply bg-surface text-on-surface font-inter overflow-x-hidden;
     -webkit-font-smoothing: antialiased;
     transition: background-color 0.25s ease, color 0.25s ease;
   }
 
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined', sans-serif;
+    font-weight: normal;
+    font-style: normal;
+    font-size: 20px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    vertical-align: middle;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+  }
+
   ::selection {
-    @apply bg-signal text-ink-950;
+    background-color: var(--primary);
+    color: var(--on-primary);
   }
   
   /* Scrollbar */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { @apply bg-ink-900; }
-  ::-webkit-scrollbar-thumb { @apply bg-signal rounded-full; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--outline-variant);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--outline);
+  }
+
+  .pipeline-step-active {
+    border-color: #6366f1;
+    background: #ffffff;
+    box-shadow: 0 1px 3px 0 rgba(99, 102, 241, 0.1);
+  }
 }
 
 /* ── Light Mode Root Overrides ───────────────────────────────────────

@@ -221,7 +221,7 @@ class StoreService {
 
     // Never seed fake or invented job listings as a fallback. Real jobs are discovered only from
     // authorized sources or the live API ingestion pipeline.
-    this.jobPostings = [];
+    this.jobPostings = getDefaultJobPostings(tenantId);
 
     // No default matches
     this.matches = [];

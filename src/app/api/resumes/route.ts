@@ -31,30 +31,41 @@ export async function GET(request: NextRequest) {
       profile = await getProfileFromFirestore(userId).catch(() => null) || undefined;
     }
 
-    if (profile && profile.skills && profile.skills.length > 0) {
-      resumes = [{
+    if (!profile || !profile.fullName) {
+      // Trigger default profile setup if needed
+      try {
+        const profRes = await fetch(`${request.nextUrl.origin}/api/profile?userId=${userId}`);
+        const profData = await profRes.json();
+        if (profData.profile) profile = profData.profile;
+      } catch (err) {}
+    }
+
+    if (profile && profile.fullName) {
+      const masterResume = {
         id: `resume_master_${userId}`,
         userId,
-        targetRole: profile.desiredTitles?.[0] || 'Software Engineer',
+        targetRole: profile.desiredTitles?.[0] || profile.headline || 'Principal Product Designer',
         company: 'Master Vault Resume',
         content: {
-          candidateName: profile.fullName || 'Candidate',
-          email: profile.email || '',
-          phone: profile.phone || '',
-          location: profile.location || '',
+          candidateName: profile.fullName || 'Raihan Molla',
+          email: profile.email || 'raihanmolla993@gmail.com',
+          phone: profile.phone || '+1 (555) 389-4210',
+          location: profile.location || 'San Francisco, CA (PST)',
+          headline: profile.headline || 'Principal Product Designer & Systems Architect',
           summary: profile.summary || '',
           skills: (profile.skills || []).map((s: any) => typeof s === 'string' ? s : s.name),
           experiences: (profile.experiences || []).map((e: any) => ({
             role: e.role,
             company: e.company,
-            duration: `${e.startDate || ''} - ${e.endDate || 'Present'}`,
+            duration: e.isCurrent ? `${e.startDate} - Present` : `${e.startDate || ''} - ${e.endDate || 'Present'}`,
+            location: e.location || '',
             bullets: e.bullets || []
           })),
           educations: (profile.educations || []).map((ed: any) => ({
             institution: ed.institution,
             degree: ed.degree,
-            year: `${ed.startYear || ''} - ${ed.endYear || ''}`,
-            gpa: ed.gpa
+            year: `${ed.startDate || ed.startYear || ''} - ${ed.endDate || ed.endYear || ''}`,
+            gpa: ed.gradeGpa || ed.gpa || ''
           })),
           projects: (profile.projects || []).map((p: any) => ({
             name: p.title,
@@ -64,7 +75,9 @@ export async function GET(request: NextRequest) {
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
-      }];
+      };
+      resumes = [masterResume];
+      db.resumes.push(masterResume as any);
     }
   }
 

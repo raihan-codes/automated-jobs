@@ -40,7 +40,7 @@ export async function GET(request: Request) {
   }
 
   // Load jobs from memory store (only real scraped / synced postings)
-  const jobList = db.jobPostings;
+  const jobList = db.ensureJobsLoaded();
 
   let filtered = await Promise.all(jobList.map(async job => {
     let matchResult: any = null;

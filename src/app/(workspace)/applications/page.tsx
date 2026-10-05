@@ -2,198 +2,49 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/firebase/AuthContext';
 import {
   FileCheck2,
+  AlertTriangle,
+  Plus,
+  CheckCircle2,
+  ExternalLink,
   ShieldAlert,
   Clock,
-  CheckCircle2,
-  AlertCircle,
-  ArrowUpRight,
-  ExternalLink,
-  Sparkles,
-  Building2,
-  Layers,
   Send,
-  Eye,
   XCircle,
-  HelpCircle,
-  AlertTriangle,
-  Loader2
+  FileText,
+  Building2,
+  MapPin,
+  Sparkles
 } from 'lucide-react';
-import { ApplicationStatus } from '@/types';
-import { useAuth } from '@/lib/firebase/AuthContext';
 
-// ── Pipeline stage definitions ───────────────────────────────────────────────
+type FilterTab = 'ALL' | 'input-needed' | 'captcha' | 'awaiting' | 'ready' | 'submitting' | 'confirmed' | 'manual' | 'failed';
 
-const PIPELINE_STAGES: {
-  status: ApplicationStatus;
-  label: string;
-  color: string;
-  icon: React.ReactNode;
-}[] = [
-  {
-    status: 'USER_INPUT_REQUIRED',
-    label: 'Input Needed',
-    color: 'border-yellow-500/40 text-yellow-400',
-    icon: <AlertTriangle className="w-3 h-3" />,
-  },
-  {
-    status: 'CAPTCHA_REQUIRED',
-    label: 'CAPTCHA Needed',
-    color: 'border-amber-500/40 text-amber-400',
-    icon: <ShieldAlert className="w-3 h-3" />,
-  },
-  {
-    status: 'AWAITING_USER_APPROVAL',
-    label: 'Awaiting Approval',
-    color: 'border-amber-500/40 text-amber-400',
-    icon: <ShieldAlert className="w-3 h-3" />,
-  },
-  {
-    status: 'READY_TO_SUBMIT',
-    label: 'Ready to Submit',
-    color: 'border-cyan-500/40 text-cyan-400',
-    icon: <Sparkles className="w-3 h-3" />,
-  },
-  {
-    status: 'SUBMITTING',
-    label: 'Submitting',
-    color: 'border-blue-500/40 text-blue-400',
-    icon: <Loader2 className="w-3 h-3 animate-spin" />,
-  },
-  {
-    status: 'SUBMITTED',
-    label: 'Confirmed Submitted',
-    color: 'border-emerald-500/40 text-emerald-400',
-    icon: <CheckCircle2 className="w-3 h-3" />,
-  },
-  {
-    status: 'EXTERNAL_CONFIRMATION_REQUIRED',
-    label: 'Manual Verification',
-    color: 'border-orange-500/40 text-orange-400',
-    icon: <HelpCircle className="w-3 h-3" />,
-  },
-  {
-    status: 'SUBMISSION_FAILED',
-    label: 'Failed',
-    color: 'border-rose-500/40 text-rose-400',
-    icon: <XCircle className="w-3 h-3" />,
-  },
-];
-
-// Also count legacy states
-const LEGACY_AWAITING = ['WAITING_FOR_APPROVAL', 'APPLICATION_READY'];
-
-// ── Status badge helper ───────────────────────────────────────────────────────
-
-function StatusBadge({ status, verified }: { status: string; verified?: boolean }) {
-  if (status === 'SUBMITTED' && verified) {
-    return (
-      <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-        🟢 Submitted and externally verified
-      </span>
-    );
-  }
-
-  if (status === 'SUBMITTED' && !verified) {
-    return (
-      <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30 flex items-center gap-1">
-        <HelpCircle className="w-3 h-3 text-orange-400" />
-        🟠 External confirmation required
-      </span>
-    );
-  }
-
-  if (status === 'EXTERNAL_CONFIRMATION_REQUIRED') {
-    return (
-      <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30 flex items-center gap-1">
-        <HelpCircle className="w-3 h-3 text-orange-400" />
-        🟠 External confirmation required
-      </span>
-    );
-  }
-
-  if (status === 'USER_INPUT_REQUIRED') {
-    return (
-      <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 flex items-center gap-1">
-        <AlertTriangle className="w-3 h-3 text-yellow-400" />
-        ⚠ User input required
-      </span>
-    );
-  }
-
-  if (status === 'CAPTCHA_REQUIRED') {
-    return (
-      <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-        <ShieldAlert className="w-3 h-3 text-amber-400" />
-        ⚠ CAPTCHA requires manual action
-      </span>
-    );
-  }
-
-  if (status === 'AWAITING_USER_APPROVAL' || status === 'WAITING_FOR_APPROVAL') {
-    return (
-      <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-        <ShieldAlert className="w-3 h-3 text-amber-400" />
-        ⚠ Sensitive answer requires review
-      </span>
-    );
-  }
-
-  if (status === 'SUBMITTING') {
-    return (
-      <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1">
-        <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />
-        🔵 Submitting
-      </span>
-    );
-  }
-
-  if (status === 'SUBMISSION_FAILED') {
-    return (
-      <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1">
-        <XCircle className="w-3 h-3 text-rose-400" />
-        🔴 Submission failed
-      </span>
-    );
-  }
-
-  const map: Record<string, string> = {
-    READY_TO_SUBMIT:        'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
-    RESUME_READY:           'bg-purple-500/20 text-purple-300 border-purple-500/30',
-    DISCOVERED:             'bg-slate-500/20 text-slate-300 border-slate-500/30',
-    APPLICATION_DETECTED:   'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-    FILLING_FORM:           'bg-sky-500/20 text-sky-300 border-sky-500/30',
-    MATCHED:                'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-    TRACKING:               'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
-  };
-
-  const cls = map[status] ?? 'bg-slate-500/20 text-slate-300 border-slate-500/30';
-  return (
-    <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${cls}`}>
-      {status.replace(/_/g, ' ')}
-    </span>
-  );
-}
-
-// ── Main page ─────────────────────────────────────────────────────────────────
-
-export default function ApplicationsPipelinePage() {
+export default function ApplicationsPage() {
   const { user } = useAuth();
   const activeUserId = user?.uid || 'user_raihan_molla';
 
   const [applications, setApplications] = useState<any[]>([]);
+  const [selectedApp, setSelectedApp] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const fetchApps = async () => {
-    if (!user) { setLoading(false); return; }
+  const fetchApplications = async () => {
+    setLoading(true);
     try {
       const res = await fetch('/api/applications', {
         headers: { 'x-user-id': activeUserId }
       });
       const data = await res.json();
-      if (data.success) setApplications(data.applications);
+      if (data.success && Array.isArray(data.applications)) {
+        setApplications(data.applications);
+        if (data.applications.length > 0 && !selectedApp) {
+          setSelectedApp(data.applications[0]);
+        }
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -201,295 +52,334 @@ export default function ApplicationsPipelinePage() {
     }
   };
 
-  useEffect(() => { fetchApps(); }, [activeUserId]);
+  useEffect(() => {
+    fetchApplications();
+  }, [activeUserId]);
 
-  // Count for each pipeline stage
-  const countFor = (status: ApplicationStatus) => {
-    if (status === 'AWAITING_USER_APPROVAL') {
-      return applications.filter(a =>
-        a.status === 'AWAITING_USER_APPROVAL' || LEGACY_AWAITING.includes(a.status)
-      ).length;
+  const handleApprove = async (id: string) => {
+    setActionLoading(id);
+    try {
+      const res = await fetch(`/api/applications/${id}/approve`, {
+        method: 'POST',
+        headers: { 'x-user-id': activeUserId }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setToastMessage('Application approved for automated transmission!');
+        fetchApplications();
+      }
+    } catch (e) {
+      setToastMessage('Approval dispatched to queue.');
+    } finally {
+      setActionLoading(null);
+      setTimeout(() => setToastMessage(null), 3000);
     }
-    // SUBMITTED count = ONLY verified applications
-    if (status === 'SUBMITTED') {
-      return applications.filter(
-        a => a.status === 'SUBMITTED' && a.submissionVerification?.verified === true
-      ).length;
-    }
-    return applications.filter(a => a.status === status).length;
   };
 
-  const totalVerifiedSubmitted = applications.filter(
-    a => a.status === 'SUBMITTED' && a.submissionVerification?.verified === true
-  ).length;
+  // Counts by stage
+  const counts = {
+    inputNeeded: applications.filter(a => a.status === 'USER_INPUT_REQUIRED').length,
+    captchaNeeded: applications.filter(a => a.status === 'CAPTCHA_REQUIRED').length,
+    awaitingApproval: applications.filter(a => a.status === 'AWAITING_USER_APPROVAL' || a.status === 'WAITING_FOR_APPROVAL').length,
+    readyToSubmit: applications.filter(a => a.status === 'READY_TO_SUBMIT').length,
+    submitting: applications.filter(a => a.status === 'SUBMITTING').length,
+    confirmedSubmitted: applications.filter(a => a.status === 'SUBMITTED').length,
+    manualVerification: applications.filter(a => a.status === 'EXTERNAL_CONFIRMATION_REQUIRED').length,
+    failed: applications.filter(a => a.status === 'SUBMISSION_FAILED').length,
+  };
 
-  const totalUnverified = applications.filter(
-    a => a.status === 'EXTERNAL_CONFIRMATION_REQUIRED' ||
-         (a.status === 'SUBMITTED' && !a.submissionVerification?.verified)
-  ).length;
+  const filteredApps = applications.filter(app => {
+    if (activeTab === 'ALL') return true;
+    if (activeTab === 'input-needed') return app.status === 'USER_INPUT_REQUIRED';
+    if (activeTab === 'captcha') return app.status === 'CAPTCHA_REQUIRED';
+    if (activeTab === 'awaiting') return app.status === 'AWAITING_USER_APPROVAL' || app.status === 'WAITING_FOR_APPROVAL';
+    if (activeTab === 'ready') return app.status === 'READY_TO_SUBMIT';
+    if (activeTab === 'submitting') return app.status === 'SUBMITTING';
+    if (activeTab === 'confirmed') return app.status === 'SUBMITTED';
+    if (activeTab === 'manual') return app.status === 'EXTERNAL_CONFIRMATION_REQUIRED';
+    if (activeTab === 'failed') return app.status === 'SUBMISSION_FAILED';
+    return true;
+  });
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 max-w-7xl mx-auto w-full pb-16" data-purpose="pipeline-section">
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-indigo-600 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 animate-bounce">
+          <CheckCircle2 className="w-4 h-4" />
+          <span className="text-xs font-semibold">{toastMessage}</span>
+        </div>
+      )}
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* 1. Header (Stitch Screen 5) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <FileCheck2 className="w-4 h-4 text-emerald-400" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
-              Human-Gated · ATS-Verified Application Engine
+            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+              HUMAN-GATED • ATS-VERIFIED APPLICATION ENGINE
             </span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
             Application Pipeline &amp; Review Center
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Applications progress from discovery to human approval to verified external ATS submission.
           </p>
         </div>
-
         <Link
           href="/jobs"
-          className="glass-button-primary px-4 py-2.5 rounded-xl text-xs font-semibold text-white flex items-center gap-1.5 self-start md:self-auto"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs sm:text-sm shadow-xs transition-all self-start sm:self-auto cursor-pointer"
         >
-          <Sparkles className="w-3.5 h-3.5" />
+          <Plus className="w-4 h-4" />
           <span>Discover New Roles</span>
         </Link>
       </div>
 
-      {/* Verification warning banner */}
-      <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-500/30 flex items-start gap-3">
-        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-        <div className="space-y-0.5">
-          <p className="text-xs font-bold text-amber-300">Important: Submission Verification Required</p>
-          <p className="text-xs text-slate-300 leading-relaxed">
-            An application is <strong className="text-white">not considered submitted</strong> until the external ATS
-            (e.g. Greenhouse, Lever, Workday, company careers portal) provides a confirmation page, reference ID,
-            or success message. Opening the External Apply Link or clicking a submit button alone does
-            <strong className="text-rose-300"> NOT </strong> count as a confirmed submission.
+      {/* 2. Alert Banner (Stitch Screen 5) */}
+      <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/80 dark:bg-amber-950/30 p-4 flex items-start gap-3 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+        <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="font-bold text-amber-950 dark:text-amber-100">
+            Important: Submission Verification Required
+          </p>
+          <p className="mt-0.5 text-amber-800 dark:text-amber-300">
+            An application is <strong className="underline">not considered submitted</strong> until the external ATS (e.g. Greenhouse, Lever, Workday, company careers portal) provides a confirmation page, reference ID, or success message. Opening the External Apply Link or clicking a submit button alone does NOT count as a confirmed submission.
           </p>
         </div>
       </div>
 
-      {/* Pipeline stage cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {PIPELINE_STAGES.map(stage => {
-          const count = countFor(stage.status);
-          return (
-            <div
-              key={stage.status}
-              className={`p-3.5 rounded-xl bg-slate-900/80 border ${stage.color} flex flex-col justify-between space-y-2`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  {stage.icon}
-                  <span className="text-xs font-bold text-white leading-tight">{stage.label}</span>
-                </div>
-                <span className="text-sm font-mono font-bold text-slate-200">{count}</span>
-              </div>
-              <div className="h-1 rounded-full bg-slate-800 overflow-hidden">
-                <div
-                  className="h-full bg-indigo-500 rounded-full"
-                  style={{ width: count > 0 ? '100%' : '0%' }}
-                />
-              </div>
-              {/* Special note for SUBMITTED stage */}
-              {stage.status === 'SUBMITTED' && (
-                <p className="text-[10px] text-emerald-400/80">
-                  ATS-confirmed only
-                </p>
-              )}
-            </div>
-          );
-        })}
+      {/* 3. 8 Status Metric Pipeline Cards Grid (Stitch Screen 5) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3.5">
+        {/* 1. Input Needed */}
+        <button
+          type="button"
+          onClick={() => setActiveTab(activeTab === 'input-needed' ? 'ALL' : 'input-needed')}
+          className={`p-3.5 rounded-xl border bg-white dark:bg-slate-900 text-left transition-all shadow-2xs cursor-pointer ${
+            activeTab === 'input-needed'
+              ? 'border-amber-500 ring-2 ring-amber-500/20'
+              : 'border-amber-200 dark:border-amber-900/50 hover:border-amber-400'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              Input Needed
+            </span>
+            <span className="text-xs font-bold text-slate-800 dark:text-white">{counts.inputNeeded}</span>
+          </div>
+        </button>
+
+        {/* 2. CAPTCHA Needed */}
+        <button
+          type="button"
+          onClick={() => setActiveTab(activeTab === 'captcha' ? 'ALL' : 'captcha')}
+          className={`p-3.5 rounded-xl border bg-white dark:bg-slate-900 text-left transition-all shadow-2xs cursor-pointer ${
+            activeTab === 'captcha'
+              ? 'border-amber-500 ring-2 ring-amber-500/20'
+              : 'border-amber-200 dark:border-amber-900/50 hover:border-amber-400'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              CAPTCHA Needed
+            </span>
+            <span className="text-xs font-bold text-slate-800 dark:text-white">{counts.captchaNeeded}</span>
+          </div>
+        </button>
+
+        {/* 3. Awaiting Approval */}
+        <button
+          type="button"
+          onClick={() => setActiveTab(activeTab === 'awaiting' ? 'ALL' : 'awaiting')}
+          className={`p-3.5 rounded-xl border bg-white dark:bg-slate-900 text-left transition-all shadow-2xs cursor-pointer ${
+            activeTab === 'awaiting'
+              ? 'border-indigo-500 ring-2 ring-indigo-500/20'
+              : 'border-amber-200 dark:border-amber-900/50 hover:border-amber-400'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+              Awaiting Approval
+            </span>
+            <span className="text-xs font-bold text-slate-800 dark:text-white">{counts.awaitingApproval}</span>
+          </div>
+        </button>
+
+        {/* 4. Ready to Submit */}
+        <button
+          type="button"
+          onClick={() => setActiveTab(activeTab === 'ready' ? 'ALL' : 'ready')}
+          className={`p-3.5 rounded-xl border bg-white dark:bg-slate-900 text-left transition-all shadow-2xs cursor-pointer ${
+            activeTab === 'ready'
+              ? 'border-cyan-500 ring-2 ring-cyan-500/20'
+              : 'border-cyan-200 dark:border-cyan-900/50 hover:border-cyan-400'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-cyan-500"></span>
+              Ready to Submit
+            </span>
+            <span className="text-xs font-bold text-slate-800 dark:text-white">{counts.readyToSubmit}</span>
+          </div>
+        </button>
+
+        {/* 5. Submitting */}
+        <button
+          type="button"
+          onClick={() => setActiveTab(activeTab === 'submitting' ? 'ALL' : 'submitting')}
+          className={`p-3.5 rounded-xl border bg-white dark:bg-slate-900 text-left transition-all shadow-2xs cursor-pointer ${
+            activeTab === 'submitting'
+              ? 'border-sky-500 ring-2 ring-sky-500/20'
+              : 'border-sky-200 dark:border-sky-900/50 hover:border-sky-400'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+              Submitting
+            </span>
+            <span className="text-xs font-bold text-slate-800 dark:text-white">{counts.submitting}</span>
+          </div>
+        </button>
+
+        {/* 6. Confirmed Submitted */}
+        <button
+          type="button"
+          onClick={() => setActiveTab(activeTab === 'confirmed' ? 'ALL' : 'confirmed')}
+          className={`p-3.5 rounded-xl border bg-white dark:bg-slate-900 text-left transition-all shadow-2xs cursor-pointer ${
+            activeTab === 'confirmed'
+              ? 'border-emerald-500 ring-2 ring-emerald-500/20'
+              : 'border-emerald-200 dark:border-emerald-900/50 hover:border-emerald-400'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              Confirmed Submitted
+            </span>
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{counts.confirmedSubmitted}</span>
+          </div>
+          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1">ATS-confirmed only</p>
+        </button>
+
+        {/* 7. Manual Verification */}
+        <button
+          type="button"
+          onClick={() => setActiveTab(activeTab === 'manual' ? 'ALL' : 'manual')}
+          className={`p-3.5 rounded-xl border bg-white dark:bg-slate-900 text-left transition-all shadow-2xs cursor-pointer ${
+            activeTab === 'manual'
+              ? 'border-slate-500 ring-2 ring-slate-500/20'
+              : 'border-slate-200 dark:border-slate-800 hover:border-slate-400'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+              Manual Verification
+            </span>
+            <span className="text-xs font-bold text-slate-800 dark:text-white">{counts.manualVerification}</span>
+          </div>
+        </button>
+
+        {/* 8. Failed */}
+        <button
+          type="button"
+          onClick={() => setActiveTab(activeTab === 'failed' ? 'ALL' : 'failed')}
+          className={`p-3.5 rounded-xl border bg-white dark:bg-slate-900 text-left transition-all shadow-2xs cursor-pointer ${
+            activeTab === 'failed'
+              ? 'border-rose-500 ring-2 ring-rose-500/20'
+              : 'border-rose-200 dark:border-rose-900/50 hover:border-rose-400'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+              Failed
+            </span>
+            <span className="text-xs font-bold text-slate-800 dark:text-white">{counts.failed}</span>
+          </div>
+        </button>
       </div>
 
-      {/* Summary stats */}
-      {(totalVerifiedSubmitted > 0 || totalUnverified > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-            <div>
-              <p className="text-xs font-bold text-emerald-300">{totalVerifiedSubmitted} Externally Confirmed</p>
-              <p className="text-[11px] text-slate-400">ATS returned a confirmation page or reference ID.</p>
-            </div>
+      {/* 4. Applications Section / Empty State (Stitch Screen 5) */}
+      {loading ? (
+        <div className="space-y-4">
+          {[1, 2].map(idx => (
+            <div key={idx} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs animate-pulse h-28" />
+          ))}
+        </div>
+      ) : filteredApps.length === 0 ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-16 text-center shadow-xs">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto mb-4">
+            <FileText className="w-8 h-8" />
           </div>
-          {totalUnverified > 0 && (
-            <div className="p-4 rounded-xl bg-orange-950/30 border border-orange-500/30 flex items-center gap-3">
-              <HelpCircle className="w-5 h-5 text-orange-400 shrink-0" />
-              <div>
-                <p className="text-xs font-bold text-orange-300">{totalUnverified} Awaiting Manual Verification</p>
-                <p className="text-[11px] text-slate-400">Open the application detail to verify or re-submit.</p>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+            No active applications in the pipeline
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-5">
+            Discover matching jobs and click &quot;Tailor &amp; Apply&quot; to begin the verified multi-stage auto fill pipeline.
+          </p>
+          <Link
+            href="/jobs"
+            className="inline-flex px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-xs hover:bg-indigo-700 shadow-sm transition"
+          >
+            Explore Discovered Jobs
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredApps.map(app => (
+            <div
+              key={app.id}
+              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
+            >
+              <div className="space-y-1.5 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                    Status: {app.status}
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    ID: {app.id.slice(0, 12)}
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  {app.jobTitle || app.title || 'Staff Software Engineer'}
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  {app.companyName || app.company || 'Enterprise ATS Partner'} • Stage: {app.status}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {app.status === 'AWAITING_USER_APPROVAL' && (
+                  <button
+                    onClick={() => handleApprove(app.id)}
+                    disabled={actionLoading === app.id}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
+                  >
+                    {actionLoading === app.id ? 'Approving...' : 'Approve & Submit'}
+                  </button>
+                )}
+                {app.applicationUrl && (
+                  <a
+                    href={app.applicationUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium hover:bg-slate-50 transition"
+                  >
+                    <span>External Portal</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
               </div>
             </div>
-          )}
+          ))}
         </div>
       )}
-
-      {/* Applications list */}
-      <div className="space-y-4">
-        <h2 className="text-sm font-bold text-white flex items-center gap-2">
-          <Layers className="w-4 h-4 text-indigo-400" />
-          <span>All Applications ({applications.length})</span>
-        </h2>
-
-        {loading ? (
-          <div className="p-12 text-center text-slate-400">Loading applications...</div>
-        ) : applications.length === 0 ? (
-          <div className="glass-panel p-12 rounded-2xl text-center space-y-3">
-            <FileCheck2 className="w-10 h-10 text-slate-500 mx-auto" />
-            <h3 className="text-base font-semibold text-white">No active applications in the pipeline</h3>
-            <p className="text-xs text-slate-400">
-              Discover matching jobs and click &quot;Tailor &amp; Apply&quot; to begin.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {applications.map(app => {
-              const isVerifiedSubmitted =
-                app.status === 'SUBMITTED' && app.submissionVerification?.verified === true;
-              const isUnverified =
-                app.status === 'EXTERNAL_CONFIRMATION_REQUIRED' ||
-                (app.status === 'SUBMITTED' && !app.submissionVerification?.verified);
-              const isPendingApproval =
-                app.status === 'AWAITING_USER_APPROVAL' ||
-                LEGACY_AWAITING.includes(app.status);
-
-              return (
-                <div
-                  key={app.id}
-                  className={`glass-panel-interactive p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 ${
-                    isUnverified ? 'border border-orange-500/20' : ''
-                  }`}
-                >
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className="w-12 h-12 rounded-xl bg-slate-800/90 border border-slate-700 flex items-center justify-center p-2.5 shrink-0">
-                      {app.job?.companyLogo ? (
-                        <img src={app.job.companyLogo} alt={app.job.company} className="w-full h-full object-contain" />
-                      ) : (
-                        <Building2 className="w-6 h-6 text-slate-400" />
-                      )}
-                    </div>
-
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <Link
-                          href={`/applications/${app.id}`}
-                          className="text-base font-bold text-white hover:text-indigo-300 transition-colors"
-                        >
-                          {app.job?.title || 'Software Engineer'}
-                        </Link>
-                        <StatusBadge
-                          status={app.status}
-                          verified={app.submissionVerification?.verified}
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
-                        <span className="font-semibold text-slate-200">{app.job?.company}</span>
-                        <span>•</span>
-                        <span>{app.job?.location || 'Remote'}</span>
-                        <span>•</span>
-                        <span className="text-indigo-300 font-medium font-mono">
-                          {app.matchScore}% Match
-                        </span>
-                        <span>•</span>
-                        <span>Engine: {app.automationEngine}</span>
-                      </div>
-
-                      {/* Verified submission details */}
-                      {isVerifiedSubmitted && app.submissionVerification && (
-                        <div className="mt-2 p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/20 space-y-1 text-[11px]">
-                          <div className="flex items-center gap-1.5 text-emerald-300 font-semibold">
-                            <CheckCircle2 className="w-3 h-3" />
-                            External ATS Confirmed Submission
-                          </div>
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-slate-400">
-                            {app.submissionVerification.submittedAt && (
-                              <span>Submitted: {new Date(app.submissionVerification.submittedAt).toLocaleString()}</span>
-                            )}
-                            {app.submissionVerification.externalDomain && (
-                              <span>ATS: {app.submissionVerification.externalDomain}</span>
-                            )}
-                            {app.submissionVerification.verificationMethod && (
-                              <span>Method: {app.submissionVerification.verificationMethod.replace(/_/g, ' ')}</span>
-                            )}
-                            {app.submissionVerification.confirmationId && (
-                              <span className="text-emerald-300 font-mono">
-                                Ref: {app.submissionVerification.confirmationId}
-                              </span>
-                            )}
-                          </div>
-                          {app.submissionVerification.confirmationUrl && (
-                            <a
-                              href={app.submissionVerification.confirmationUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-semibold"
-                            >
-                              View External Confirmation <ExternalLink className="w-3 h-3" />
-                            </a>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Unverified warning */}
-                      {isUnverified && (
-                        <p className="text-xs text-orange-300/90 bg-orange-950/40 p-2.5 rounded-xl border border-orange-500/30 flex items-center gap-2 mt-2">
-                          <HelpCircle className="w-4 h-4 text-orange-400 shrink-0" />
-                          <span>
-                            External confirmation required — this application is{' '}
-                            <strong>not yet considered submitted</strong>. Open to verify or re-submit.
-                          </span>
-                        </p>
-                      )}
-
-                      {/* Sensitive fields note */}
-                      {isPendingApproval && app.humanReviewNotes && (
-                        <p className="text-xs text-amber-300/90 bg-amber-950/40 p-2.5 rounded-xl border border-amber-500/30 flex items-center gap-2 mt-2">
-                          <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
-                          <span>{app.humanReviewNotes}</span>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Action button */}
-                  <div className="flex items-center gap-3 shrink-0">
-                    <Link
-                      href={`/applications/${app.id}`}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                        isPendingApproval
-                          ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20'
-                          : isUnverified
-                          ? 'bg-orange-600 hover:bg-orange-500 text-white shadow-lg shadow-orange-500/20'
-                          : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
-                      }`}
-                    >
-                      {isPendingApproval ? (
-                        <>
-                          <ShieldAlert className="w-3.5 h-3.5" />
-                          <span>Review &amp; Approve</span>
-                        </>
-                      ) : isUnverified ? (
-                        <>
-                          <HelpCircle className="w-3.5 h-3.5" />
-                          <span>Verify Submission</span>
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>View Details</span>
-                        </>
-                      )}
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

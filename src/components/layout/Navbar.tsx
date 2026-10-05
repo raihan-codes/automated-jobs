@@ -26,7 +26,7 @@ export default function Navbar() {
 
   const handleStartProjectClick = () => {
     if (user) {
-      router.push('/jobs')
+      router.push('/overview')
     } else {
       const input = document.getElementById('start-project-input') as HTMLInputElement | null
       if (input) {
@@ -75,7 +75,7 @@ export default function Navbar() {
               <MagneticButton 
                 className="px-6 py-2.5 rounded-full bg-signal text-ink-950 text-sm font-medium hover:shadow-[0_0_20px_rgba(232,255,71,0.3)] transition-all cursor-pointer"
                 data-cursor="hover"
-                onClick={() => router.push('/jobs')}
+                onClick={() => router.push('/overview')}
               >
                 Open Dashboard
               </MagneticButton>
