@@ -8,77 +8,86 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 function getDefaultProfileForUser(userId: string): CandidateProfileData {
-  const isRaihan = userId === 'user_raihan_molla' || userId.includes('raihan') || !userId;
   return {
     id: `prof_${userId}`,
     userId,
-    fullName: isRaihan ? 'Raihan Molla' : 'Raihan Molla',
-    email: isRaihan ? 'raihanmolla993@gmail.com' : 'raihanmolla993@gmail.com',
-    phone: '+1 (555) 389-4210',
-    location: 'San Francisco, CA (PST)',
-    headline: 'Principal Product Designer & Systems Architect',
-    summary: 'Principal Product Designer with 8+ years of experience scaling enterprise SaaS applications, design systems, and cross-functional engineering workflows. Specializing in complex data-dense interfaces and zero-latency design architectures.',
-    desiredTitles: ['Principal Product Designer', 'Staff Product Designer', 'Lead UI/UX Architect'],
-    preferredLocations: ['Remote', 'San Francisco, CA', 'New York, NY'],
-    remotePreference: 'REMOTE_OR_HYBRID',
+    fullName: 'Raihan Molla',
+    email: 'raihanmolla9903@gmail.com',
+    phone: '+91 8585844758',
+    location: 'Asansol, West Bengal, India',
+    linkedinUrl: 'https://www.linkedin.com/in/raihan-molla',
+    githubUrl: 'https://github.com/raihan-codes',
+    website: 'https://my-portfolio.vercel.app',
+    portfolioUrl: 'https://my-portfolio.vercel.app',
+    headline: 'B.Tech CSE (Data Science) Student & Software Developer',
+    summary: 'B.Tech Computer Science & Engineering (Data Science) student at Kazi Nazrul University, Asansol (2024–2028, GPA: 7.1). Software developer proficient in Python, Java, C/C++, and JavaScript. Hands-on experience developing local-first AI applications like AI Notes Taker (Google Meet Notetaker) with OAuth and IndexedDB. Strong foundation in Data Structures & Algorithms, Object-Oriented Programming, and DBMS.',
+    desiredTitles: ['Software Engineer Intern', 'Full Stack Developer', 'Data Science Intern', 'Software Developer'],
+    preferredLocations: ['Remote', 'Bengaluru, India', 'Kolkata, India', 'Hyderabad, India'],
+    remotePreference: 'ANY',
     requiresVisa: false,
-    workAuthorization: 'US Citizen / Green Card',
-    noticePeriod: '2 Weeks',
-    minSalary: 185000,
-    expectedSalaryLPA: 230000,
-    yearsOfExperience: 8,
+    workAuthorization: 'Indian Citizen',
+    noticePeriod: 'Immediate',
+    minSalary: 500000,
+    expectedSalaryLPA: 8,
+    yearsOfExperience: 1,
     skills: [
-      { name: 'Figma / Design Systems', category: 'TECHNICAL', years: 8, level: 'EXPERT' },
-      { name: 'React / Tailwind CSS', category: 'FRAMEWORK', years: 5, level: 'EXPERT' },
-      { name: 'User Research & Metrics', category: 'TECHNICAL', years: 6, level: 'ADVANCED' },
-      { name: 'TypeScript & Next.js', category: 'FRAMEWORK', years: 4, level: 'ADVANCED' },
-      { name: 'Information Architecture', category: 'TECHNICAL', years: 7, level: 'EXPERT' },
-      { name: 'Wireframing & Prototyping', category: 'TOOL', years: 8, level: 'EXPERT' },
+      { name: 'Python', category: 'TECHNICAL', years: 2, level: 'ADVANCED' },
+      { name: 'Java', category: 'TECHNICAL', years: 2, level: 'ADVANCED' },
+      { name: 'C', category: 'TECHNICAL', years: 2, level: 'ADVANCED' },
+      { name: 'C++', category: 'TECHNICAL', years: 2, level: 'ADVANCED' },
+      { name: 'JavaScript', category: 'TECHNICAL', years: 2, level: 'ADVANCED' },
+      { name: 'Data Structures & Algorithms', category: 'TECHNICAL', years: 2, level: 'EXPERT' },
+      { name: 'Object-Oriented Programming', category: 'TECHNICAL', years: 2, level: 'ADVANCED' },
+      { name: 'DBMS', category: 'TECHNICAL', years: 2, level: 'ADVANCED' },
+      { name: 'SQL', category: 'TECHNICAL', years: 2, level: 'ADVANCED' },
+      { name: 'Computer Architecture', category: 'TECHNICAL', years: 1, level: 'INTERMEDIATE' },
+      { name: 'Git', category: 'TOOL', years: 2, level: 'ADVANCED' },
+      { name: 'GitHub', category: 'TOOL', years: 2, level: 'ADVANCED' },
+      { name: 'REST APIs', category: 'TECHNICAL', years: 2, level: 'ADVANCED' },
+      { name: 'Web Development', category: 'TECHNICAL', years: 2, level: 'ADVANCED' },
+      { name: 'IndexedDB', category: 'TOOL', years: 1, level: 'INTERMEDIATE' },
+      { name: 'Vercel', category: 'TOOL', years: 1, level: 'ADVANCED' },
+      { name: 'Problem Solving', category: 'SOFT', years: 2, level: 'EXPERT' },
+      { name: 'Logical Thinking', category: 'SOFT', years: 2, level: 'EXPERT' },
+      { name: 'Team Collaboration', category: 'SOFT', years: 2, level: 'ADVANCED' }
     ],
     experiences: [
       {
-        company: 'Acme Corp',
-        role: 'Staff Product Designer',
-        location: 'San Francisco, CA',
-        startDate: '2021',
+        company: 'Nasheedio',
+        role: 'Voice Artist',
+        location: 'Remote',
+        startDate: '2024',
         endDate: 'Present',
         isCurrent: true,
         bullets: [
-          'Spearheaded redesign of core SaaS analytics dashboard, improving user engagement metrics across enterprise tier by 32%.',
-          'Architected design token system scaling from 3 to 45 internal product squads using Figma, React, and Tailwind CSS.',
-          'Mentored 6 mid-level and senior designers across distributed global squads.'
-        ]
-      },
-      {
-        company: 'TechScale',
-        role: 'Senior UX Engineer',
-        location: 'San Francisco, CA',
-        startDate: '2018',
-        endDate: '2021',
-        isCurrent: false,
-        bullets: [
-          'Developed high-performance design tokens and React UI packages reducing engineering handoff time by 35%.',
-          'Collaborated closely with product managers to run iterative user testing cycles and usability audits.'
+          'Worked as a voice artist, recording and delivering voice-based content according to project requirements.',
+          'Developed communication, presentation, voice modulation, and content-delivery skills.',
+          'Collaborated on audio content while maintaining consistency and quality in recordings.'
         ]
       }
     ],
     educations: [
       {
-        institution: 'University of California, Berkeley',
-        degree: 'B.S. in Cognitive Science & Human-Computer Interaction',
-        startDate: '2014',
-        endDate: '2018',
-        gradeGpa: '3.85 / 4.0'
+        institution: 'Kazi Nazrul University, Asansol',
+        degree: 'B.Tech in Computer Science & Engineering (Data Science)',
+        fieldOfStudy: 'Data Science',
+        startDate: '2024',
+        endDate: '2028',
+        gradeGpa: '7.1'
       }
     ],
     projects: [
       {
-        title: 'DesignPulse Design System',
-        description: 'Multi-brand enterprise design system supporting React, Next.js, and Figma tokens.',
-        technologies: ['Figma', 'React', 'Tailwind CSS', 'TypeScript'],
+        title: 'AI Notes Taker — Local-First Google Meet Notetaker',
+        description: 'Local-first application to capture Google Meet audio and generate meeting notes.',
+        role: 'Creator & Developer',
+        link: 'https://ai-notes-taker-bay.vercel.app',
+        technologies: ['JavaScript', 'Google Meet Media API', 'OAuth', 'IndexedDB', 'Vercel', 'Web Audio API'],
         bullets: [
-          'Adopted by 45+ product squads with automated token export to NPM packages.',
-          'Reduced component development cycle from 3 weeks to 4 days.'
+          'Built a local-first application to capture Google Meet audio and generate meeting notes.',
+          'Integrated Google Meet Media API with OAuth for meeting media access.',
+          'Implemented browser-based transcription and note extraction using local model processing.',
+          'Used IndexedDB for local storage and deployed the application on Vercel.'
         ]
       }
     ]
@@ -99,56 +108,66 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // If user doesn't have an uploaded or stored profile yet, initialize with default ground truth
+  // If user doesn't have an uploaded or stored profile yet:
   if (!profile || !profile.fullName) {
-    profile = getDefaultProfileForUser(userId);
-    db.profiles.set(userId, profile);
-    await saveProfileToFirestore(userId, profile).catch(() => {});
+    if (userId === 'user_raihan_molla') {
+      profile = getDefaultProfileForUser(userId);
+      db.profiles.set(userId, profile);
+      await saveProfileToFirestore(userId, profile).catch(() => {});
 
-    // Ensure Master Resume exists in memory and Firestore
-    const masterResumeId = `resume_master_${userId}`;
-    const syncedMasterResume = {
-      id: masterResumeId,
-      userId,
-      targetRole: profile.desiredTitles?.[0] || 'Principal Product Designer',
-      company: 'Master Vault Resume',
-      content: {
-        candidateName: profile.fullName,
-        email: profile.email,
-        phone: profile.phone || '',
-        location: profile.location || '',
-        headline: profile.headline || 'Principal Product Designer',
-        summary: profile.summary || '',
-        skills: profile.skills.map(s => typeof s === 'string' ? s : s.name),
-        experiences: profile.experiences.map(e => ({
-          role: e.role,
-          company: e.company,
-          duration: e.isCurrent ? `${e.startDate} - Present` : `${e.startDate} - ${e.endDate || ''}`,
-          location: e.location || '',
-          bullets: e.bullets || []
-        })),
-        educations: profile.educations.map(ed => ({
-          institution: ed.institution,
-          degree: ed.degree,
-          year: `${ed.startDate || ''} - ${ed.endDate || ''}`,
-          gpa: ed.gradeGpa || ''
-        })),
-        projects: profile.projects.map(p => ({
-          name: p.title,
-          technologies: p.technologies || [],
-          bullets: p.bullets || []
-        }))
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    const rIdx = db.resumes.findIndex(r => r.userId === userId && (r.id === masterResumeId || r.company === 'Master Vault Resume'));
-    if (rIdx >= 0) {
-      db.resumes[rIdx] = syncedMasterResume as any;
+      // Ensure Master Resume exists in memory and Firestore for demo user
+      const masterResumeId = `resume_master_${userId}`;
+      const syncedMasterResume = {
+        id: masterResumeId,
+        userId,
+        targetRole: profile.desiredTitles?.[0] || profile.headline || 'Software Developer',
+        company: 'Master Vault Resume',
+        content: {
+          candidateName: profile.fullName,
+          email: profile.email,
+          phone: profile.phone || '',
+          location: profile.location || '',
+          headline: profile.headline || 'Software Developer',
+          summary: profile.summary || '',
+          skills: profile.skills.map(s => typeof s === 'string' ? s : s.name),
+          experiences: profile.experiences.map(e => ({
+            role: e.role,
+            company: e.company,
+            duration: e.isCurrent ? `${e.startDate} - Present` : `${e.startDate} - ${e.endDate || ''}`,
+            location: e.location || '',
+            bullets: e.bullets || []
+          })),
+          educations: profile.educations.map(ed => ({
+            institution: ed.institution,
+            degree: ed.degree,
+            year: `${ed.startDate || ''} - ${ed.endDate || ''}`,
+            gpa: ed.gradeGpa || ''
+          })),
+          projects: profile.projects.map(p => ({
+            name: p.title,
+            technologies: p.technologies || [],
+            bullets: p.bullets || []
+          }))
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      const rIdx = db.resumes.findIndex(r => r.userId === userId && (r.id === masterResumeId || (r as any).company === 'Master Vault Resume'));
+      if (rIdx >= 0) {
+        db.resumes[rIdx] = syncedMasterResume as any;
+      } else {
+        db.resumes.push(syncedMasterResume as any);
+      }
+      await saveResumeToFirestore(userId, syncedMasterResume).catch(() => {});
     } else {
-      db.resumes.push(syncedMasterResume as any);
+      // For any other user, return unpopulated state until they upload their own resume
+      return NextResponse.json({
+        success: true,
+        userId,
+        hasUploadedResume: false,
+        profile: null
+      });
     }
-    await saveResumeToFirestore(userId, syncedMasterResume).catch(() => {});
   }
 
   return NextResponse.json({
@@ -181,7 +200,7 @@ export async function PUT(request: NextRequest) {
       email: updatedProfile.email,
       phone: updatedProfile.phone || '',
       location: updatedProfile.location || '',
-      headline: updatedProfile.headline || updatedProfile.desiredTitles?.[0] || 'Principal Product Designer',
+      headline: updatedProfile.headline || updatedProfile.desiredTitles?.[0] || 'Software Developer',
       summary: updatedProfile.summary || '',
       skills: (updatedProfile.skills || []).map((s: any) => typeof s === 'string' ? s : s.name),
       experiences: (updatedProfile.experiences || []).map((e: any) => ({
@@ -207,14 +226,14 @@ export async function PUT(request: NextRequest) {
     const syncedMasterResume = {
       id: masterResumeId,
       userId,
-      targetRole: updatedProfile.desiredTitles?.[0] || 'Principal Product Designer',
+      targetRole: updatedProfile.desiredTitles?.[0] || updatedProfile.headline || 'Software Developer',
       company: 'Master Vault Resume',
       content: syncedResumeContent,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    const rIdx = db.resumes.findIndex(r => r.userId === userId && (r.id === masterResumeId || r.company === 'Master Vault Resume'));
+    const rIdx = db.resumes.findIndex(r => r.userId === userId && (r.id === masterResumeId || (r as any).company === 'Master Vault Resume'));
     if (rIdx >= 0) {
       db.resumes[rIdx] = syncedMasterResume as any;
     } else {

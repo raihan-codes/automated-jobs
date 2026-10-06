@@ -19,10 +19,10 @@ const CANDIDATES = [
     userId: 'user_raihan_molla',
     name: 'Raihan Molla',
     email: 'raihanmolla9903@gmail.com',
-    target: 'Full-Time (₹24 - 40 LPA)',
-    role: 'Senior Full Stack Engineer',
-    skills: ['TypeScript', 'React', 'Node.js', 'Next.js', 'PostgreSQL', 'Redis', 'Docker', 'Go', 'Kubernetes'],
-    location: 'Kolkata, West Bengal, India'
+    target: 'Fresher / Internship (₹6 - 12 LPA)',
+    role: 'Software Developer & B.Tech CSE (Data Science) Student',
+    skills: ['Python', 'Java', 'C', 'C++', 'JavaScript', 'Data Structures & Algorithms', 'DBMS', 'SQL', 'Git', 'REST APIs', 'Web Development', 'IndexedDB', 'Vercel'],
+    location: 'Asansol, West Bengal, India'
   },
   {
     userId: 'user_rohan_sharma',

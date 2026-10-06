@@ -9,7 +9,6 @@ import {
   CalendarCheck,
   Award,
   Activity,
-  Sliders,
   Play,
   RefreshCw,
   Upload,
@@ -97,11 +96,11 @@ export default function OverviewPage() {
 
         <div className="flex items-center gap-3">
           <Link
-            href="/settings"
+            href="/jobs"
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-colors"
           >
-            <Sliders className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-            <span>Configure Agents</span>
+            <Compass className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+            <span>Explore Matches</span>
           </Link>
           <button
             onClick={handleRunPipelines}
@@ -456,10 +455,10 @@ export default function OverviewPage() {
           <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <span className="text-[11px] text-slate-400 font-medium">Next automatic cycle in 8m</span>
             <Link
-              href="/settings"
+              href="/jobs"
               className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 flex items-center gap-1"
             >
-              <span>Diagnostics</span>
+              <span>Job Pipeline</span>
               <ExternalLink className="w-3 h-3" />
             </Link>
           </div>

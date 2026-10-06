@@ -10,21 +10,25 @@ export interface IngestionFilterOptions {
 }
 
 export interface IngestionResult {
-  sourcePlatform: JobPlatform;
-  company: string;
-  totalFetched: number;
-  newJobsCount: number;
-  updatedJobsCount: number;
-  skippedDuplicatesCount: number;
-  jobs: NormalizedJobPosting[];
+  platform?: JobPlatform;
+  sourcePlatform?: JobPlatform;
+  company?: string;
+  success?: boolean;
+  jobsFetched?: number;
+  jobsUpserted?: number;
+  totalFetched?: number;
+  newJobsCount?: number;
+  updatedJobsCount?: number;
+  skippedDuplicatesCount?: number;
+  jobs?: NormalizedJobPosting[];
   errors?: string[];
-  syncedAt: Date;
+  syncedAt?: Date;
 }
 
 export interface ConnectorMetadata {
   platform: JobPlatform;
   name: string;
-  category: 'ATS' | 'STARTUP_FEED' | 'INTERNSHIP_PORTAL' | 'PUBLIC_JOB_BOARD' | 'CAREER_PAGE';
+  category: 'ATS' | 'STARTUP_FEED' | 'INTERNSHIP_PORTAL' | 'PUBLIC_JOB_BOARD' | 'CAREER_PAGE' | 'COMPANY_CAREER_SITE';
   supportsAutomatedPrefill: boolean;
   supportsInternships: boolean;
   isLegalAndPermitted: boolean;

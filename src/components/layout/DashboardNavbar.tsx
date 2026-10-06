@@ -17,7 +17,6 @@ import {
   FileText,
   Target,
   UserCircle2,
-  Sliders,
   ShieldCheck
 } from 'lucide-react';
 
@@ -29,7 +28,6 @@ const mobileNavItems = [
   { label: 'Resume Studio', href: '/resumes', icon: FileText },
   { label: 'Resume Review & Jobs', href: '/resumes/review', icon: Target },
   { label: 'Candidate Profile', href: '/profile', icon: UserCircle2 },
-  { label: 'Automation & Sources', href: '/settings', icon: Sliders },
 ];
 
 export function DashboardNavbar() {
@@ -38,7 +36,7 @@ export function DashboardNavbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileName, setProfileName] = useState(user?.displayName || 'Raihan Molla');
-  const [profileRole, setProfileRole] = useState('Principal Product Designer');
+  const [profileRole, setProfileRole] = useState('Software Developer');
 
   React.useEffect(() => {
     if (user?.displayName) setProfileName(user.displayName);

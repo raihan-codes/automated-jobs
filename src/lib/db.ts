@@ -170,7 +170,7 @@ export function unverifiedSubmission(): SubmissionVerification {
   };
 }
 
-import { getDefaultJobPostings } from '@/data/default-jobs';
+import { getDefaultJobPostings } from '../data/default-jobs';
 
 // Global In-Memory and persistent store state
 class StoreService {

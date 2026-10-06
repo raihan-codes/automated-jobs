@@ -185,6 +185,8 @@ export interface ProjectData {
   description: string;
   role?: string;
   link?: string;
+  liveDemoUrl?: string;
+  repoUrl?: string;
   technologies: string[];
   bullets: string[];
 }
@@ -207,6 +209,10 @@ export interface CertificationData {
 }
 
 export interface NormalizedJobPosting {
+  id?: string;
+  tenantId?: string;
+  fingerprint?: string;
+  lastSyncedAt?: string;
   sourcePlatform: JobPlatform;
   sourceJobId: string;
   sourceUrl: string;

@@ -2,7 +2,7 @@ import { AppShell } from '@/components/layout/AppShell';
 
 /**
  * Route group layout for the authenticated workspace pages
- * (/jobs, /applications, /resumes, /profile, /settings, /upload).
+ * (/overview, /jobs, /applications, /resumes, /profile, /upload).
  * Route groups do not affect URLs — every page keeps its original path,
  * but now renders inside the shared AppShell (Sidebar + DashboardNavbar).
  */

@@ -36,7 +36,7 @@ export default function Footer() {
               <li><Link href="/applications" className="hover:text-white transition-colors" data-cursor="text">Application Tracking</Link></li>
               <li><Link href="/resumes" className="hover:text-white transition-colors" data-cursor="text">Resume Studio</Link></li>
               <li><Link href="/upload" className="hover:text-white transition-colors" data-cursor="text">Upload Resume</Link></li>
-              <li><Link href="/settings" className="hover:text-white transition-colors" data-cursor="text">Job Alerts & Sources</Link></li>
+              <li><Link href="/profile" className="hover:text-white transition-colors" data-cursor="text">Candidate Profile</Link></li>
             </ul>
           </div>
 

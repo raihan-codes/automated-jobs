@@ -101,15 +101,21 @@ export default function ResumeReviewJobsPage() {
     }, 1200);
   };
 
-  const candidateName = candidateProfile?.fullName || user?.displayName || 'Google Verified Candidate';
-  const candidateEmail = candidateProfile?.email || user?.email || 'google.engineer@gmail.com';
-  const candidateHeadline = candidateProfile?.headline || 'Principal Product Designer & Systems Architect';
+  const candidateName = candidateProfile?.fullName || user?.displayName || 'Raihan Molla';
+  const candidateEmail = candidateProfile?.email || user?.email || 'raihanmolla9903@gmail.com';
+  const candidateHeadline = candidateProfile?.headline || 'B.Tech CSE (Data Science) Student & Software Developer';
   const candidateSkills: string[] = candidateProfile?.skills?.map((s: any) => typeof s === 'string' ? s : s.name) || [
-    'Figma / Design Systems',
-    'React',
-    'Tailwind CSS',
-    'TypeScript',
-    'Next.js'
+    'Python',
+    'Java',
+    'C',
+    'C++',
+    'JavaScript',
+    'Data Structures & Algorithms',
+    'DBMS',
+    'SQL',
+    'Git',
+    'REST APIs',
+    'Web Development'
   ];
 
   return (

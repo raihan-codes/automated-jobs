@@ -44,14 +44,14 @@ export async function GET(request: NextRequest) {
       const masterResume = {
         id: `resume_master_${userId}`,
         userId,
-        targetRole: profile.desiredTitles?.[0] || profile.headline || 'Principal Product Designer',
+        targetRole: profile.desiredTitles?.[0] || profile.headline || 'Software Developer',
         company: 'Master Vault Resume',
         content: {
           candidateName: profile.fullName || 'Raihan Molla',
-          email: profile.email || 'raihanmolla993@gmail.com',
-          phone: profile.phone || '+1 (555) 389-4210',
-          location: profile.location || 'San Francisco, CA (PST)',
-          headline: profile.headline || 'Principal Product Designer & Systems Architect',
+          email: profile.email || 'raihanmolla9903@gmail.com',
+          phone: profile.phone || '+91 8585844758',
+          location: profile.location || 'Asansol, West Bengal, India',
+          headline: profile.headline || 'B.Tech CSE (Data Science) Student & Software Developer',
           summary: profile.summary || '',
           skills: (profile.skills || []).map((s: any) => typeof s === 'string' ? s : s.name),
           experiences: (profile.experiences || []).map((e: any) => ({

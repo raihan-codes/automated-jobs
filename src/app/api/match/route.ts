@@ -45,10 +45,10 @@ export async function POST(request: NextRequest) {
       if (profile) db.profiles.set(userId, profile);
     }
     if (!profile) {
-      profile = Array.from(db.profiles.values())[0];
-    }
-    if (!profile) {
-      return NextResponse.json({ success: false, error: 'Candidate profile not found' }, { status: 404 });
+      return NextResponse.json({
+        success: false,
+        error: 'Candidate profile not found for this user. Please upload your resume to view matching analytics.'
+      }, { status: 404 });
     }
 
     const matchResult = await JobMatcher.analyzeMatch(profile, job);

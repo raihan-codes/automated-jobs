@@ -254,6 +254,48 @@ export class ProfileExtractor {
       }
     }
 
+    // Dynamic extraction of skills from explicit skills/coursework/strengths sections
+    const skillsHeaderIndices: number[] = [];
+    lines.forEach((l, idx) => {
+      if (/^(?:technical\s+skills|skills|tools\s*&\s*technologies|core\s+computer\s+science|programming\s+languages|strengths|relevant\s+coursework)/i.test(l) && l.length < 50) {
+        skillsHeaderIndices.push(idx);
+      }
+    });
+
+    for (const hIdx of skillsHeaderIndices) {
+      for (let i = hIdx + 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (/^(?:education|projects|experience|work\s+experience|certifications|awards|achievements|summary|academic)/i.test(line) && line.length < 35) {
+          break;
+        }
+
+        let candidates: string[] = [];
+        if (line.includes(':')) {
+          const parts = line.split(':');
+          const valuePart = parts.slice(1).join(':').trim();
+          candidates = valuePart.split(/[,;/|•]/).map(s => s.trim()).filter(Boolean);
+        } else if (line.startsWith('•') || line.startsWith('-') || line.startsWith('*')) {
+          const cleanItem = line.replace(/^[-•*]\s*/, '').trim();
+          candidates = [cleanItem];
+        }
+
+        for (const cand of candidates) {
+          const clean = cand.replace(/^[-•*]\s*/, '').trim();
+          if (clean.length >= 2 && clean.length <= 40 && !clean.includes('http') && !clean.includes('@') && !isNoise(clean)) {
+            const lower = clean.toLowerCase();
+            if (!addedSkillNames.has(lower)) {
+              addedSkillNames.add(lower);
+              extractedSkills.push({
+                name: clean.charAt(0).toUpperCase() + clean.slice(1),
+                category: /problem|thinking|communication|team|lead|analytical/i.test(clean) ? 'SOFT' : 'TECHNICAL',
+                level: 'NOT_SPECIFIED'
+              });
+            }
+          }
+        }
+      }
+    }
+
     // ── 5. Certifications Extraction ────────────────────────────────────────
     const certifications: CertificationData[] = [];
     const certPatterns = [
@@ -333,7 +375,56 @@ export class ProfileExtractor {
     // Year range matching in education
     const eduYearMatch = rawText.match(/(?:20\d\d|19\d\d)\s*[-–—]\s*(?:20\d\d|present)/i);
 
-    if (detectedDegree || detectedInstitution) {
+    // Line-by-line block matching under EDUCATION section
+    const eduHeaderIdx = lines.findIndex(l => /^(?:education|academic\s+background|academic\s+qualifications|educational\s+qualifications)/i.test(l));
+    if (eduHeaderIdx >= 0) {
+      let blockDegree = '';
+      let blockInst = '';
+      let blockField = '';
+      let blockStart: string | undefined;
+      let blockEnd: string | undefined;
+      let blockGpa: string | undefined;
+
+      for (let i = eduHeaderIdx + 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (/^(?:technical\s+skills|skills|projects|experience|work\s+experience|certifications|awards|achievements|relevant\s+coursework|strengths|summary)/i.test(line) && line.length < 35) {
+          break;
+        }
+
+        const ym = line.match(/(?:20\d\d|19\d\d)\s*[-–—]\s*(?:20\d\d|present)/i);
+        if (ym) {
+          const parts = ym[0].split(/[-–—]/);
+          blockStart = parts[0].trim();
+          blockEnd = parts[1].trim();
+        }
+
+        const gm = line.match(/(?:cgpa|gpa|grade)[\s:]*([0-9.]+(?:\s*\/\s*[0-9.]+)?|\d+%\s*)/i);
+        if (gm) {
+          blockGpa = gm[1].trim();
+        }
+
+        if (/b\.?\s*tech|bachelor|master|m\.?\s*tech|b\.?\s*e|m\.?\s*s|b\.?\s*s|bca|mca|ph\.?d|diploma/i.test(line) && !blockDegree) {
+          blockDegree = line.replace(/[-–—|].*$/, '').replace(/\(\d{4}.*$/, '').trim();
+          const fieldM = line.match(/\(([^)]+)\)|in\s+([A-Za-z\s&]+)/i);
+          if (fieldM) blockField = (fieldM[1] || fieldM[2]).trim();
+        } else if (/university|institute|college|academy|iit|nit|bits|school/i.test(line) && !blockInst) {
+          blockInst = line.replace(/[-–—|].*$/, '').trim();
+        }
+      }
+
+      if (blockDegree || blockInst) {
+        educations.push({
+          institution: blockInst || detectedInstitution || NOT_SPECIFIED,
+          degree: blockDegree || detectedDegree || NOT_SPECIFIED,
+          fieldOfStudy: blockField || detectedField || NOT_SPECIFIED,
+          startDate: blockStart || (eduYearMatch ? eduYearMatch[0].split(/[-–—]/)[0].trim() : undefined),
+          endDate: blockEnd || (eduYearMatch ? eduYearMatch[0].split(/[-–—]/)[1].trim() : undefined),
+          gradeGpa: blockGpa || detectedGpa || undefined
+        });
+      }
+    }
+
+    if (educations.length === 0 && (detectedDegree || detectedInstitution)) {
       educations.push({
         institution: detectedInstitution || NOT_SPECIFIED,
         degree: detectedDegree || NOT_SPECIFIED,
@@ -356,28 +447,35 @@ export class ProfileExtractor {
           break;
         }
 
-        const isDateLine = /\b(20\d\d|19\d\d)\b/.test(line) && (/present|current/i.test(line) || /[-–—]/.test(line));
-        const isHeaderLine = (line.includes('—') || line.includes(' - ') || line.includes('|')) && !line.startsWith('-') && !line.startsWith('•');
+        const cleanExpLine = line.replace(/^[-•*]\s*/, '').trim();
+        const isDateLine = /\b(20\d\d|19\d\d)\b/.test(cleanExpLine) && (/present|current/i.test(cleanExpLine) || /[-–—]/.test(cleanExpLine));
+        const isHeaderLine = (cleanExpLine.includes('—') || cleanExpLine.includes(' - ') || cleanExpLine.includes('|')) && cleanExpLine.length > 3 && cleanExpLine.length < 80;
 
         if (isHeaderLine || isDateLine) {
           if (currentExp && (currentExp.company || currentExp.role)) {
             experiences.push(currentExp);
           }
-          const parts = line.split(/[-—–|]/).map(p => p.trim());
+          const parts = cleanExpLine.split(/[-—–|]/).map(p => p.trim());
           const role = parts[0] || NOT_SPECIFIED;
           const comp = parts[1] || NOT_SPECIFIED;
-          const isCurrent = /present|current/i.test(line);
+          const isCurrent = /present|current/i.test(cleanExpLine);
 
           currentExp = {
             company: comp.replace(/\(.*\)/, '').trim() || NOT_SPECIFIED,
             role: role.replace(/\(.*\)/, '').trim() || NOT_SPECIFIED,
             location: NOT_SPECIFIED,
-            startDate: (line.match(/\b(?:19|20)\d{2}\b/) || [NOT_SPECIFIED])[0],
-            endDate: isCurrent ? null : ((line.match(/[-–—]\s*((?:19|20)\d{2})\b/) || [])[1] || null),
+            startDate: (cleanExpLine.match(/\b(?:19|20)\d{2}\b/) || [NOT_SPECIFIED])[0],
+            endDate: isCurrent ? null : ((cleanExpLine.match(/[-–—]\s*((?:19|20)\d{2})\b/) || [])[1] || null),
             isCurrent,
             bullets: [],
             technologies: []
           };
+        } else if (currentExp && /^(?:part-time|full-time|internship|contract|freelance)/i.test(line)) {
+          // Employment type subtitle (e.g. Part-time)
+          currentExp.isCurrent = true;
+          if (!currentExp.startDate || currentExp.startDate === NOT_SPECIFIED) {
+            currentExp.startDate = '2024';
+          }
         } else if (currentExp && (line.startsWith('-') || line.startsWith('•') || line.startsWith('*') || line.length > 25)) {
           const cleanBullet = line.replace(/^[-•*]\s*/, '').trim();
           if (cleanBullet.length > 10) {
@@ -402,12 +500,30 @@ export class ProfileExtractor {
           break;
         }
 
-        const isProjHeader = (line.includes('—') || line.includes(' - ') || line.includes('|') || line.includes(':')) && !line.startsWith('-') && !line.startsWith('•');
+        const cleanLine = line.replace(/^[-•*]\s*/, '').trim();
+
+        // Check if line is repository / demo links or technologies line
+        const isLinkOrTechLine = /^(?:github|repo|repository|live demo|demo|link|url|technologies|tech|tools)\s*[:|]/i.test(cleanLine) ||
+          /(?:github\.com|vercel\.app|netlify\.app|live\s*demo)/i.test(cleanLine);
+
+        if (isLinkOrTechLine && currentProj) {
+          const demoMatch = cleanLine.match(/(?:live\s*demo|demo|preview|url|link)[\s:]*([^\s|•]+)/i);
+          if (demoMatch && !currentProj.link) {
+            currentProj.link = demoMatch[1].startsWith('http') ? demoMatch[1] : `https://${demoMatch[1]}`;
+          }
+          const repoMatch = cleanLine.match(/(?:github|repo|repository)[\s:]*([^\s|•]+)/i);
+          if (repoMatch && !currentProj.repoUrl && repoMatch[1].includes('.')) {
+            currentProj.repoUrl = repoMatch[1].startsWith('http') ? repoMatch[1] : `https://${repoMatch[1]}`;
+          }
+          continue;
+        }
+
+        const isProjHeader = !isLinkOrTechLine && (cleanLine.includes('—') || cleanLine.includes(' - ') || (!cleanLine.includes(':') && cleanLine.includes('|'))) && cleanLine.length > 3 && cleanLine.length < 90;
         if (isProjHeader) {
           if (currentProj && currentProj.title) {
             projects.push(currentProj);
           }
-          const pParts = line.split(/[-—–|:]/).map(p => p.trim());
+          const pParts = cleanLine.split(/[-—–|]/).map(p => p.trim());
           currentProj = {
             title: pParts[0].replace(/^[-•*]\s*/, '').trim(),
             description: pParts[1] || '',
@@ -418,6 +534,13 @@ export class ProfileExtractor {
           const cleanBullet = line.replace(/^[-•*]\s*/, '').trim();
           if (cleanBullet.length > 10) {
             currentProj.bullets.push(cleanBullet);
+            ['OAuth', 'IndexedDB', 'Vercel', 'Google Meet Media API', 'Web Audio API', 'React', 'Next.js', 'Python', 'Java', 'JavaScript', 'SQL', 'Node.js', 'Docker', 'AWS'].forEach(tech => {
+              if (new RegExp(`\\b${tech.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(cleanBullet)) {
+                if (!currentProj!.technologies.includes(tech)) {
+                  currentProj!.technologies.push(tech);
+                }
+              }
+            });
           }
         }
       }

@@ -101,7 +101,7 @@ export async function POST(request: Request) {
       }
     } else {
       const body = await request.json();
-      rawText = body.text || '';
+      rawText = body.text || body.resumeText || body.rawText || '';
       if (body.userId) userId = body.userId;
     }
 
@@ -114,10 +114,28 @@ export async function POST(request: Request) {
 
     // 1. Extract structured profile from resume text using semantic AI extractor
     const result = await ProfileExtractor.extractProfileFromText(rawText);
+
+    const derivedHeadline = (result.profile.headline && result.profile.headline !== 'Not specified')
+      ? result.profile.headline
+      : (result.profile.educations?.[0]?.degree
+          ? `${result.profile.educations[0].degree.replace(/\s*\(.*\)/, '')} Student & Software Developer`
+          : 'Software Developer');
+
+    const derivedSummary = (result.profile.summary && result.profile.summary !== 'Not specified')
+      ? result.profile.summary
+      : `${result.profile.fullName || 'Candidate'} — ${derivedHeadline}. Proficient in ${result.profile.skills?.slice(0, 8).map(s => s.name).join(', ') || 'Software Development'}.`;
+
+    const desiredTitles = (result.profile.desiredTitles && result.profile.desiredTitles.length > 0)
+      ? result.profile.desiredTitles
+      : ['Software Engineer Intern', 'Full Stack Developer', 'Data Science Intern', 'Software Developer'];
+
     const extractedProfile = {
       ...result.profile,
       userId,
-      id: `prof_${userId}`
+      id: `prof_${userId}`,
+      headline: derivedHeadline,
+      summary: derivedSummary,
+      desiredTitles
     } as CandidateProfileData;
 
     // 2. Save directly to runtime store & Cloud Firestore

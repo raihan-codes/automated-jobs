@@ -19,6 +19,57 @@ import {
 
 const SAMPLE_RESUMES = [
   {
+    title: 'B.Tech CSE (Data Science) & Developer (Raihan Molla — Asansol)',
+    type: 'Fresher / Internship (₹6 - 12 LPA)',
+    text: `RAIHAN MOLLA
+Asansol, west bengal | raihanmolla9903@gmail.com | 8585844758
+GitHub: github.com/raihan-codes LinkedIn: https://www.linkedin.com/in/raihan-molla
+Portfolio: my-portfolio.vercel.app
+
+EDUCATION
+B.Tech in Computer Science & Engineering (Data Science)
+Kazi Nazrul University, Asansol
+2024 – 2028
+Current GPA: 7.1
+
+TECHNICAL SKILLS
+Programming Languages: python,Java, C, C++,java script
+Core Computer Science: Data Structures & Algorithms, Object-Oriented Programming, DBMS, Computer Architecture, Operating/Computer Fundamentals
+Database: SQL, Database Management Systems
+Tools & Technologies: Git, GitHub, REST/API fundamentals, Web Development fundamentals
+
+PROJECTS
+AI Notes Taker — Local-First Google Meet Notetaker
+GitHub: Repository | Live Demo: ai-notes-taker-bay.vercel.app
+- Built a local-first application to capture Google Meet audio and generate meeting notes.
+- Integrated Google Meet Media API with OAuth for meeting media access.
+- Implemented browser-based transcription and note extraction using local model processing.
+- Used IndexedDB for local storage and deployed the application on Vercel.
+
+EXPERIENCE
+Voice Artist — Nasheedio
+Part-time
+- Worked as a voice artist, recording and delivering voice-based content according to project requirements.
+- Developed communication, presentation, voice modulation, and content-delivery skills.
+- Collaborated on audio content while maintaining consistency and quality in recordings.
+
+RELEVANT COURSEWORK
+- Data Structures & Algorithms
+- Object-Oriented Programming
+- Database Management Systems
+- Computer Architecture
+- Digital Electronics
+- Analog Electronics
+- Principles of Communication Engineering
+
+STRENGTHS
+- Problem Solving
+- Logical Thinking
+- Programming Fundamentals
+- Communication
+- Team Collaboration`,
+  },
+  {
     title: 'Lead Full-Stack Architect (Rohan Sharma — Bengaluru)',
     type: 'Full-Time (₹34 LPA)',
     text: `ROHAN SHARMA
@@ -38,26 +89,6 @@ Razorpay Technologies — Software Development Engineer II (2022 - Present)
 - Architected payment routing microservices handling 15M+ transactions/day using Go, Node.js, and Redis with sub-10ms response time.
 - Engineered Next.js 14 merchant dashboard with live WebSocket telemetry serving 50,000+ businesses across India.
 - Optimized PostgreSQL sharded partitions and Redis caching layer, cutting peak latency by 45%.`,
-  },
-  {
-    title: 'Principal Product Designer (Raihan Molla — San Francisco)',
-    type: 'Full-Time ($185k - $230k)',
-    text: `RAIHAN MOLLA
-San Francisco, CA • raihanmolla993@gmail.com • +1 (555) 389-4210
-linkedin.com/in/raihanmolla • github.com/raihanmolla
-
-PROFESSIONAL SUMMARY
-Principal Product Designer with 8+ years experience scaling enterprise SaaS design systems and cross-functional engineering workflows. Specializing in data-dense interfaces and zero-latency design architectures. Authorized to work in the US (No sponsorship required). Minimum Base Salary: $185,000. Target Total Comp: $230,000.
-
-EXPERIENCE
-Acme Corp — Staff Product Designer (2021 - Present)
-- Spearheaded redesign of core SaaS analytics dashboard, improving user engagement metrics across enterprise tier by 32%.
-- Architected design token system scaling from 3 to 45 internal product squads using Figma, React, and Tailwind CSS.
-- Mentored 6 mid-level and senior designers across distributed global squads.
-
-CORE COMPETENCIES
-Design: Figma, Design Systems, Wireframing, Rapid Prototyping, User Research, Information Architecture
-Engineering: React, Next.js, Tailwind CSS, TypeScript, Storybook, HTML5/CSS3, Git`,
   }
 ];
 
@@ -71,15 +102,15 @@ export default function UploadResumePage() {
   const [parsingStep, setParsingStep] = useState<number>(0);
   const [uploadQueue, setUploadQueue] = useState<any[]>([
     {
-      name: 'Raihan_Molla_Master_CV_2024.pdf',
-      size: '2.4 MB',
+      name: 'Raihan_Molla_Resume.pdf',
+      size: '1.2 MB',
       status: 'Complete',
-      time: 'Parsed in 1.2s • 100% Extracted',
+      time: 'Parsed in 0.8s • 100% Extracted',
       progress: 100,
     },
     {
-      name: 'Portfolio_Design_Tokens_v3.docx',
-      size: '1.8 MB',
+      name: 'AI_Notes_Taker_Project.pdf',
+      size: '850 KB',
       status: 'Ready',
       time: 'Stored securely in private vault',
       progress: 100,
@@ -100,18 +131,67 @@ export default function UploadResumePage() {
     };
     setUploadQueue(prev => [newQueueItem, ...prev]);
 
-    // Read text if plain text or run extraction
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      if (content && content.length > 50) {
-        setResumeText(content);
-        processResume(content, file.name);
-      } else {
-        processResume(SAMPLE_RESUMES[0].text, file.name);
+    const isBinary = /\.(pdf|docx|doc)$/i.test(file.name);
+    if (isBinary) {
+      processResumeFile(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        if (content && content.length > 50) {
+          setResumeText(content);
+          processResume(content, file.name);
+        } else {
+          processResume(SAMPLE_RESUMES[0].text, file.name);
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const processResumeFile = async (file: File) => {
+    setIsProcessing(true);
+    setParsingStep(1);
+
+    setTimeout(() => setParsingStep(2), 400);
+    setTimeout(() => setParsingStep(3), 900);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', activeUserId);
+
+      const res = await fetch('/api/profile/extract-resume', {
+        method: 'POST',
+        headers: {
+          'x-user-id': activeUserId
+        },
+        body: formData
+      });
+      const data = await res.json();
+      setParsingStep(4);
+      setTimeout(() => setParsingStep(5), 500);
+      setTimeout(() => setParsingStep(6), 900);
+
+      const profileObj = data.profile || data.data?.profile;
+      if (data.success && profileObj) {
+        setExtractedData(profileObj);
+        setUploadQueue(prev => [
+          {
+            name: file.name,
+            size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+            status: 'Complete',
+            time: 'Parsed in 1.1s • Zero Hallucinations',
+            progress: 100,
+          },
+          ...prev.slice(1)
+        ]);
       }
-    };
-    reader.readAsText(file);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const processResume = async (rawText: string, filename?: string) => {
@@ -128,15 +208,16 @@ export default function UploadResumePage() {
           'Content-Type': 'application/json',
           'x-user-id': activeUserId
         },
-        body: JSON.stringify({ resumeText: rawText })
+        body: JSON.stringify({ resumeText: rawText, text: rawText, userId: activeUserId })
       });
       const data = await res.json();
       setParsingStep(4);
       setTimeout(() => setParsingStep(5), 500);
       setTimeout(() => setParsingStep(6), 900);
 
-      if (data.success && data.profile) {
-        setExtractedData(data.profile);
+      const profileObj = data.profile || data.data?.profile;
+      if (data.success && profileObj) {
+        setExtractedData(profileObj);
         setUploadQueue(prev => [
           {
             name: filename || 'Uploaded_Document.pdf',
@@ -305,12 +386,12 @@ export default function UploadResumePage() {
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
               <span className="text-slate-400 block font-medium">Candidate Name</span>
               <span className="font-bold text-slate-900 dark:text-white text-sm">{extractedData.fullName || 'Raihan Molla'}</span>
-              <span className="text-slate-500 dark:text-slate-400 block mt-1">{extractedData.email || 'raihanmolla993@gmail.com'}</span>
+              <span className="text-slate-500 dark:text-slate-400 block mt-1">{extractedData.email || 'raihanmolla9903@gmail.com'}</span>
             </div>
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
               <span className="text-slate-400 block font-medium">Headline &amp; Target Role</span>
-              <span className="font-bold text-slate-900 dark:text-white text-sm">{extractedData.headline || 'Principal Product Designer'}</span>
-              <span className="text-slate-500 dark:text-slate-400 block mt-1">{extractedData.location || 'San Francisco, CA'}</span>
+              <span className="font-bold text-slate-900 dark:text-white text-sm">{extractedData.headline || 'B.Tech CSE (Data Science) Student & Software Developer'}</span>
+              <span className="text-slate-500 dark:text-slate-400 block mt-1">{extractedData.location || 'Asansol, West Bengal, India'}</span>
             </div>
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
               <span className="text-slate-400 block font-medium">Skills Extracted</span>

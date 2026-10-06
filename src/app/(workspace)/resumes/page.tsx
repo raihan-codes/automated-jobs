@@ -64,15 +64,15 @@ function ResumeStudioContent() {
   };
 
   const candidateName = candidateProfile?.fullName || user?.displayName || 'Raihan Molla';
-  const candidateEmail = candidateProfile?.email || user?.email || 'raihanmolla993@gmail.com';
-  const candidatePhone = candidateProfile?.phone || '+1 (555) 389-4210';
-  const candidateLocation = candidateProfile?.location || 'San Francisco, CA (PST)';
-  const candidateHeadline = candidateProfile?.headline || 'Principal Product Designer & Systems Architect';
-  const candidateSummary = candidateProfile?.summary || 'Principal Product Designer with 8+ years of experience scaling enterprise SaaS applications, design systems, and cross-functional engineering workflows. Specializing in complex data-dense interfaces and zero-latency design architectures.';
+  const candidateEmail = candidateProfile?.email || user?.email || 'raihanmolla9903@gmail.com';
+  const candidatePhone = candidateProfile?.phone || '+91 8585844758';
+  const candidateLocation = candidateProfile?.location || 'Asansol, West Bengal, India';
+  const candidateHeadline = candidateProfile?.headline || 'B.Tech CSE (Data Science) Student & Software Developer';
+  const candidateSummary = candidateProfile?.summary || 'B.Tech Computer Science & Engineering (Data Science) student at Kazi Nazrul University, Asansol (2024–2028, GPA: 7.1). Software developer proficient in Python, Java, C/C++, and JavaScript. Hands-on experience developing local-first AI applications like AI Notes Taker (Google Meet Notetaker) with OAuth and IndexedDB.';
 
   const candidateSkills: string[] = (candidateProfile?.skills && candidateProfile.skills.length > 0)
     ? candidateProfile.skills.map((s: any) => typeof s === 'string' ? s : s.name)
-    : ['Figma / Design Systems', 'React', 'Tailwind CSS', 'User Research & Metrics', 'TypeScript & Next.js', 'Information Architecture'];
+    : ['Python', 'Java', 'C', 'C++', 'JavaScript', 'Data Structures & Algorithms', 'Object-Oriented Programming', 'DBMS', 'SQL', 'Git', 'REST APIs', 'Web Development'];
 
   const candidateExperiences = (candidateProfile?.experiences && candidateProfile.experiences.length > 0)
     ? candidateProfile.experiences.map((exp: any) => ({
@@ -83,22 +83,13 @@ function ResumeStudioContent() {
       }))
     : [
         {
-          company: targetCompanyQuery || 'Acme Corp',
-          role: 'Staff Product Designer',
-          duration: '2021 - Present',
+          company: targetCompanyQuery || 'Nasheedio',
+          role: 'Voice Artist',
+          duration: '2024 - Present (Part-time)',
           bullets: [
-            'Spearheaded redesign of core SaaS analytics dashboard, improving user engagement metrics across enterprise tier by 32%.',
-            'Architected design token system scaling from 3 to 45 internal product squads using Figma, React, and Tailwind CSS.',
-            'Mentored 6 mid-level and senior designers across distributed global squads.'
-          ]
-        },
-        {
-          company: 'TechScale',
-          role: 'Senior UX Engineer',
-          duration: '2018 - 2021',
-          bullets: [
-            'Developed high-performance design tokens and React UI packages reducing engineering handoff time by 35%.',
-            'Collaborated closely with product managers to run iterative user testing cycles and usability audits.'
+            'Worked as a voice artist, recording and delivering voice-based content according to project requirements.',
+            'Developed communication, presentation, voice modulation, and content-delivery skills.',
+            'Collaborated on audio content while maintaining consistency and quality in recordings.'
           ]
         }
       ];
@@ -254,7 +245,7 @@ function ResumeStudioContent() {
                 Verified Work Experience
               </h3>
               <div className="space-y-4">
-                {candidateExperiences.map((exp, idx) => (
+                {candidateExperiences.map((exp: any, idx: number) => (
                   <div key={idx} className="space-y-1 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-slate-900 dark:text-white">{exp.role} — {exp.company}</span>

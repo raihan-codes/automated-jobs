@@ -41,7 +41,7 @@ Requirements:
       updatedAt: new Date(now - 3600 * 1000 * 48),
       lastSyncedAt: new Date().toISOString(),
       extractedSkills: ['Python 3.11', 'FastAPI', 'Distributed Queue (Kafka)', 'PostgreSQL', 'Kubernetes'],
-      experienceLevel: 'STAFF',
+      experienceLevel: 'LEAD',
       visaAllowed: true
     },
     {

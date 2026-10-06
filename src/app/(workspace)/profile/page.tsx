@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/firebase/AuthContext';
 import {
@@ -17,9 +17,14 @@ import {
   Phone,
   Linkedin,
   Github,
+  Globe,
   Save,
   Check,
-  FileText
+  FileText,
+  GraduationCap,
+  FolderGit2,
+  ExternalLink,
+  Loader2
 } from 'lucide-react';
 
 export default function CandidateProfilePage() {
@@ -28,34 +33,28 @@ export default function CandidateProfilePage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [saveToast, setSaveToast] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Profile Form State
-  const [fullName, setFullName] = useState(user?.displayName || 'Raihan Molla');
-  const [email, setEmail] = useState(user?.email || 'raihanmolla993@gmail.com');
-  const [phone, setPhone] = useState('+1 (555) 389-4210');
-  const [location, setLocation] = useState('San Francisco, CA (PST)');
-  const [linkedinUrl, setLinkedinUrl] = useState('https://linkedin.com/in/raihanmolla');
-  const [githubUrl, setGithubUrl] = useState('https://github.com/raihanmolla');
-  const [headline, setHeadline] = useState('Principal Product Designer & Systems Architect');
-  const [bio, setBio] = useState(
-    'Principal Product Designer with 8+ years of experience scaling enterprise SaaS applications, design systems, and cross-functional engineering workflows. Specializing in complex data-dense interfaces and zero-latency design architectures.'
-  );
+  // Profile Form State - dynamically populated from user's extracted resume
+  const [fullName, setFullName] = useState(user?.displayName || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [phone, setPhone] = useState('');
+  const [location, setLocation] = useState('');
+  const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [githubUrl, setGithubUrl] = useState('');
+  const [portfolioUrl, setPortfolioUrl] = useState('');
+  const [headline, setHeadline] = useState('');
+  const [bio, setBio] = useState('');
   const [remotePreference, setRemotePreference] = useState('Any');
-  const [expectedSalary, setExpectedSalary] = useState('230000');
-  const [noticePeriod, setNoticePeriod] = useState('15 Days (Standard)');
-  const [yearsExperience, setYearsExperience] = useState('8');
+  const [expectedSalary, setExpectedSalary] = useState('');
+  const [noticePeriod, setNoticePeriod] = useState('Immediate');
+  const [yearsExperience, setYearsExperience] = useState('0');
+  const [hasProfileData, setHasProfileData] = useState(false);
 
   // Skills
-  const [skills, setSkills] = useState<string[]>([
-    'Figma / Design Systems',
-    'React',
-    'Tailwind CSS',
-    'TypeScript',
-    'Next.js',
-    'Information Architecture',
-    'User Research'
-  ]);
+  const [skills, setSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState('');
 
   // Experiences
@@ -64,27 +63,23 @@ export default function CandidateProfilePage() {
     role: string;
     duration: string;
     bullets: string[];
-  }>>([
-    {
-      company: 'Acme Corp',
-      role: 'Staff Product Designer',
-      duration: '2021 - Present',
-      bullets: [
-        'Spearheaded redesign of core SaaS analytics dashboard, improving user engagement metrics across enterprise tier by 32%.',
-        'Architected design token system scaling from 3 to 45 internal product squads using Figma, React, and Tailwind CSS.',
-        'Mentored 6 mid-level and senior designers across distributed global squads.'
-      ]
-    },
-    {
-      company: 'TechScale',
-      role: 'Senior UX Engineer',
-      duration: '2018 - 2021',
-      bullets: [
-        'Developed high-performance design tokens and React UI packages reducing engineering handoff time by 35%.',
-        'Collaborated closely with product managers to run iterative user testing cycles and usability audits.'
-      ]
-    }
-  ]);
+  }>>([]);
+
+  // Educations
+  const [educations, setEducations] = useState<Array<{
+    institution: string;
+    degree: string;
+    duration: string;
+    gpa: string;
+  }>>([]);
+
+  // Projects
+  const [projects, setProjects] = useState<Array<{
+    title: string;
+    demoUrl?: string;
+    repoUrl?: string;
+    bullets: string[];
+  }>>([]);
 
   const loadProfile = () => {
     fetch('/api/profile', { headers: { 'x-user-id': activeUserId } })
@@ -92,17 +87,21 @@ export default function CandidateProfilePage() {
       .then(data => {
         if (data.success && data.profile) {
           const p = data.profile;
-          if (p.fullName) setFullName(p.fullName);
-          if (p.email) setEmail(p.email);
-          if (p.phone) setPhone(p.phone);
-          if (p.location) setLocation(p.location);
-          if (p.headline) setHeadline(p.headline);
-          if (p.summary) setBio(p.summary);
-          if (p.salaryExpectations?.expectedSalary || p.expectedSalaryLPA) {
-            setExpectedSalary(String(p.salaryExpectations?.expectedSalary || p.expectedSalaryLPA));
+          setHasProfileData(true);
+          if (p.fullName && p.fullName !== 'Not specified') setFullName(p.fullName);
+          if (p.email && p.email !== 'Not specified') setEmail(p.email);
+          if (p.phone && p.phone !== 'Not specified') setPhone(p.phone);
+          if (p.location && p.location !== 'Not specified') setLocation(p.location);
+          if (p.linkedinUrl) setLinkedinUrl(p.linkedinUrl);
+          if (p.githubUrl) setGithubUrl(p.githubUrl);
+          if (p.portfolioUrl || p.website) setPortfolioUrl(p.portfolioUrl || p.website);
+          if (p.headline && p.headline !== 'Not specified') setHeadline(p.headline);
+          if (p.summary && p.summary !== 'Not specified') setBio(p.summary);
+          if (p.salaryExpectations?.expectedSalary || p.expectedSalaryLPA || p.expectedCTC) {
+            setExpectedSalary(String(p.salaryExpectations?.expectedSalary || p.expectedSalaryLPA || p.expectedCTC));
           }
           if (p.noticePeriod) setNoticePeriod(p.noticePeriod);
-          if (p.yearsOfExperience) setYearsExperience(String(p.yearsOfExperience));
+          if (p.yearsOfExperience !== undefined) setYearsExperience(String(p.yearsOfExperience));
           if (Array.isArray(p.skills) && p.skills.length > 0) {
             setSkills(p.skills.map((s: any) => typeof s === 'string' ? s : s.name));
           }
@@ -110,10 +109,28 @@ export default function CandidateProfilePage() {
             setExperiences(p.experiences.map((exp: any) => ({
               company: exp.company,
               role: exp.role,
-              duration: exp.isCurrent ? `${exp.startDate} - Present` : `${exp.startDate || ''} - ${exp.endDate || ''}`,
+              duration: exp.isCurrent ? `${exp.startDate || ''} - Present` : `${exp.startDate || ''} - ${exp.endDate || ''}`,
               bullets: exp.bullets || []
             })));
           }
+          if (Array.isArray(p.educations) && p.educations.length > 0) {
+            setEducations(p.educations.map((ed: any) => ({
+              institution: ed.institution,
+              degree: ed.degree,
+              duration: `${ed.startDate || ''} – ${ed.endDate || ''}`,
+              gpa: ed.gradeGpa || ''
+            })));
+          }
+          if (Array.isArray(p.projects) && p.projects.length > 0) {
+            setProjects(p.projects.map((proj: any) => ({
+              title: proj.title,
+              demoUrl: proj.link || proj.liveDemoUrl,
+              repoUrl: proj.repoUrl,
+              bullets: proj.bullets || []
+            })));
+          }
+        } else {
+          setHasProfileData(false);
         }
       })
       .catch(() => {})
@@ -124,6 +141,78 @@ export default function CandidateProfilePage() {
     loadProfile();
   }, [activeUserId]);
 
+  const handleResumeFileUpload = async (file: File) => {
+    if (!file) return;
+    setIsUploadingResume(true);
+    setSaveToast('Extracting candidate profile directly from resume document...');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', activeUserId);
+
+      const res = await fetch('/api/profile/extract-resume', {
+        method: 'POST',
+        headers: {
+          'x-user-id': activeUserId
+        },
+        body: formData
+      });
+      const data = await res.json();
+
+      const p = data.profile || data.data?.profile;
+      if (data.success && p) {
+        setHasProfileData(true);
+        if (p.fullName && p.fullName !== 'Not specified') setFullName(p.fullName);
+        if (p.email && p.email !== 'Not specified') setEmail(p.email);
+        if (p.phone && p.phone !== 'Not specified') setPhone(p.phone);
+        if (p.location && p.location !== 'Not specified') setLocation(p.location);
+        if (p.linkedinUrl) setLinkedinUrl(p.linkedinUrl);
+        if (p.githubUrl) setGithubUrl(p.githubUrl);
+        if (p.portfolioUrl || p.website) setPortfolioUrl(p.portfolioUrl || p.website);
+        if (p.headline && p.headline !== 'Not specified') setHeadline(p.headline);
+        if (p.summary && p.summary !== 'Not specified') setBio(p.summary);
+
+        if (Array.isArray(p.skills) && p.skills.length > 0) {
+          setSkills(p.skills.map((s: any) => typeof s === 'string' ? s : s.name));
+        }
+        if (Array.isArray(p.experiences) && p.experiences.length > 0) {
+          setExperiences(p.experiences.map((exp: any) => ({
+            company: exp.company,
+            role: exp.role,
+            duration: exp.isCurrent ? `${exp.startDate || ''} - Present` : `${exp.startDate || ''} - ${exp.endDate || ''}`,
+            bullets: exp.bullets || []
+          })));
+        }
+        if (Array.isArray(p.educations) && p.educations.length > 0) {
+          setEducations(p.educations.map((ed: any) => ({
+            institution: ed.institution,
+            degree: ed.degree,
+            duration: `${ed.startDate || ''} – ${ed.endDate || ''}`,
+            gpa: ed.gradeGpa || ''
+          })));
+        }
+        if (Array.isArray(p.projects) && p.projects.length > 0) {
+          setProjects(p.projects.map((proj: any) => ({
+            title: proj.title,
+            demoUrl: proj.link || proj.liveDemoUrl,
+            repoUrl: proj.repoUrl,
+            bullets: proj.bullets || []
+          })));
+        }
+
+        setSaveToast('✓ Resume parsed! Candidate profile mapped and synchronized with Ground Truth.');
+      } else {
+        setSaveToast(data.error || 'Failed to extract resume.');
+      }
+    } catch (err: any) {
+      setSaveToast('Error extracting resume file.');
+    } finally {
+      setIsUploadingResume(false);
+      setTimeout(() => setSaveToast(null), 4000);
+    }
+  };
+
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setSaving(true);
@@ -133,27 +222,44 @@ export default function CandidateProfilePage() {
         email,
         phone,
         location,
+        linkedinUrl,
+        githubUrl,
+        portfolioUrl,
+        website: portfolioUrl,
         headline,
         summary: bio,
         noticePeriod,
-        yearsOfExperience: parseInt(yearsExperience) || 8,
+        yearsOfExperience: parseInt(yearsExperience) || 1,
         salaryExpectations: {
-          expectedSalary: parseInt(expectedSalary.replace(/\D/g, '')) || 230000,
-          currency: 'USD'
+          expectedSalary: parseInt(expectedSalary.replace(/\D/g, '')) || 600000,
+          currency: 'INR'
         },
         skills: skills.map(name => ({
           name,
-          yearsOfExperience: parseInt(yearsExperience) || 5,
+          yearsOfExperience: parseInt(yearsExperience) || 1,
           category: 'TECHNICAL',
           isVerified: true
         })),
         experiences: experiences.map(exp => ({
           company: exp.company,
           role: exp.role,
-          startDate: exp.duration.split('-')[0]?.trim() || '2021',
+          startDate: exp.duration.split('-')[0]?.trim() || '2024',
           endDate: exp.duration.split('-')[1]?.trim() || 'Present',
           isCurrent: exp.duration.toLowerCase().includes('present'),
           bullets: exp.bullets
+        })),
+        educations: educations.map(ed => ({
+          institution: ed.institution,
+          degree: ed.degree,
+          startDate: ed.duration.split('–')[0]?.trim() || '2024',
+          endDate: ed.duration.split('–')[1]?.trim() || '2028',
+          gradeGpa: ed.gpa
+        })),
+        projects: projects.map(proj => ({
+          title: proj.title,
+          link: proj.demoUrl || proj.repoUrl,
+          bullets: proj.bullets,
+          technologies: []
         }))
       };
 
@@ -195,10 +301,22 @@ export default function CandidateProfilePage() {
       {/* Toast Alert */}
       {saveToast && (
         <div className="fixed bottom-6 right-6 z-50 bg-indigo-600 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 animate-bounce">
-          <CheckCircle2 className="w-4 h-4" />
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span className="text-xs font-semibold">{saveToast}</span>
         </div>
       )}
+
+      {/* Hidden File Input for Direct Upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.docx,.doc,.txt"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleResumeFileUpload(file);
+        }}
+      />
 
       {/* 1. Header (Stitch Screen 3) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -218,7 +336,7 @@ export default function CandidateProfilePage() {
         </div>
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || isUploadingResume}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs sm:text-sm shadow-xs transition-all self-start sm:self-auto cursor-pointer disabled:opacity-75"
         >
           <Save className="w-4 h-4" />
@@ -230,7 +348,11 @@ export default function CandidateProfilePage() {
       <div className="rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/70 dark:bg-indigo-950/30 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
         <div className="flex items-center gap-3.5">
           <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
-            <Upload className="w-5 h-5" />
+            {isUploadingResume ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Upload className="w-5 h-5" />
+            )}
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -246,13 +368,23 @@ export default function CandidateProfilePage() {
             </p>
           </div>
         </div>
-        <Link
-          href="/upload"
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs whitespace-nowrap transition-colors"
-        >
-          <FileText className="w-4 h-4" />
-          <span>Select Resume (.pdf, .docx, .doc, .txt)</span>
-        </Link>
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            disabled={isUploadingResume}
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs whitespace-nowrap transition-colors cursor-pointer disabled:opacity-75"
+          >
+            <FileText className="w-4 h-4" />
+            <span>{isUploadingResume ? 'Parsing Document...' : 'Select Resume (.pdf, .docx, .doc, .txt)'}</span>
+          </button>
+          <Link
+            href="/upload"
+            className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-medium hover:bg-indigo-100/50 dark:hover:bg-indigo-900/40 transition-colors"
+          >
+            Upload Center
+          </Link>
+        </div>
       </div>
 
       {/* 3. Personal Information Card (Stitch Screen 3) */}
@@ -332,12 +464,24 @@ export default function CandidateProfilePage() {
 
           <div>
             <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 block mb-1">
-              GitHub / Portfolio URL
+              GitHub Profile URL
             </label>
             <input
               type="url"
               value={githubUrl}
               onChange={(e) => setGithubUrl(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            />
+          </div>
+
+          <div className="md:col-span-3">
+            <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 block mb-1">
+              Portfolio / Live Website URL
+            </label>
+            <input
+              type="url"
+              value={portfolioUrl}
+              onChange={(e) => setPortfolioUrl(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             />
           </div>
@@ -460,7 +604,7 @@ export default function CandidateProfilePage() {
               <button
                 type="button"
                 onClick={() => removeSkill(index)}
-                className="text-slate-400 hover:text-rose-500 transition-colors"
+                className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
               >
                 ×
               </button>
@@ -485,7 +629,7 @@ export default function CandidateProfilePage() {
           <button
             type="button"
             onClick={addSkill}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition"
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
           >
             Add Skill
           </button>
@@ -518,6 +662,97 @@ export default function CandidateProfilePage() {
                   <li key={bIdx}>{b}</li>
                 ))}
               </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 7. Grounded Projects (From Resume) */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <FolderGit2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+              Featured Projects ({projects.length})
+            </h3>
+          </div>
+          <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+            ✓ Extracted from Resume
+          </span>
+        </div>
+
+        <div className="space-y-4">
+          {projects.map((proj, idx) => (
+            <div
+              key={idx}
+              className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 space-y-2 text-xs"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <h4 className="font-bold text-sm text-slate-900 dark:text-white">{proj.title}</h4>
+                <div className="flex items-center gap-2">
+                  {proj.demoUrl && (
+                    <a
+                      href={proj.demoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-semibold text-[11px] hover:underline"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>Live Demo</span>
+                    </a>
+                  )}
+                  {proj.repoUrl && (
+                    <a
+                      href={proj.repoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold text-[11px] hover:underline"
+                    >
+                      <Github className="w-3 h-3" />
+                      <span>Repo</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+              <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-300 pl-1 leading-relaxed">
+                {proj.bullets.map((b, bIdx) => (
+                  <li key={bIdx}>{b}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 8. Education & Academic Background */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+              Education &amp; Academic Credentials
+            </h3>
+          </div>
+          <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+            ✓ Verified from Resume
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          {educations.map((ed, idx) => (
+            <div
+              key={idx}
+              className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+            >
+              <div>
+                <h4 className="font-bold text-sm text-slate-900 dark:text-white">{ed.degree}</h4>
+                <p className="text-slate-500 dark:text-slate-400 mt-0.5">{ed.institution} • {ed.duration}</p>
+              </div>
+              {ed.gpa && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold text-xs border border-indigo-200 dark:border-indigo-900 self-start sm:self-auto">
+                  GPA: {ed.gpa}
+                </span>
+              )}
             </div>
           ))}
         </div>

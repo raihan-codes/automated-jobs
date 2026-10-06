@@ -338,7 +338,6 @@ IIT Roorkee — B.Tech in Computer Science (2016 - 2020, CGPA: 8.9)`;
 
   // 11. Accurate Resume Parsing (Raihan Molla's exact resume)
   console.log('\n--- 11. Accurate Resume Parsing & Entity Extraction ---');
-  const { ProfileExtractor } = await import('../src/services/ai/profile-extractor');
   const raihanResumeText = `RAIHAN MOLLA
 Asansol, west bengal | raihanmolla9903@gmail.com | 8585844758
 GitHub: github.com/raihan-codes LinkedIn: https://www.linkedin.com/in/raihan-molla
@@ -387,9 +386,9 @@ STRENGTHS
   assert(Boolean(rProfile.location?.toLowerCase().includes('asansol')), 'Accurately extracts location: Asansol, west bengal');
   assert(rProfile.headline === 'Not specified', 'Headline is Not specified (not fabricated)');
   assert(rProfile.workAuthorization === 'Not specified', 'Work authorization is Not specified (not fabricated)');
-  assert(rProfile.educations?.[0]?.institution.includes('Kazi Nazrul University'), 'Accurately extracts university institution');
+  assert(Boolean(rProfile.educations?.[0]?.institution.includes('Kazi Nazrul University')), 'Accurately extracts university institution');
 
-  const extractedSkillNames = rProfile.skills.map(s => s.name);
+  const extractedSkillNames = (rProfile.skills || []).map(s => s.name);
   assert(extractedSkillNames.includes('Python'), 'Extracts Python skill');
   assert(extractedSkillNames.includes('Java'), 'Extracts Java skill');
   assert(extractedSkillNames.includes('C'), 'Extracts C skill');
@@ -424,7 +423,7 @@ STRENGTHS
     updatedAt: new Date()
   };
 
-  const rampMatch = await JobMatcher.analyzeMatch(rProfile, rampJob);
+  const rampMatch = await JobMatcher.analyzeMatch(rProfile as CandidateProfileData, rampJob);
   assert(
     !rampMatch.matchedSkills.includes('TypeScript') &&
     !rampMatch.matchedSkills.includes('Product Engineering') &&
@@ -466,6 +465,106 @@ STRENGTHS
     link: 'https://jooble.org/job/2'
   }, 'Remote Corp');
   assert(trueRemoteJob?.isRemote === true && trueRemoteJob?.remoteType === 'REMOTE', 'Explicitly remote job is marked as remote');
+
+  // 14. Multi-User Dynamic Resume Isolation & Job Match Separation
+  console.log('\n--- 14. Multi-User Dynamic Resume Isolation & Job Match Separation ---');
+  const user1Resume = `RAIHAN MOLLA
+Asansol, west bengal | raihanmolla9903@gmail.com | 8585844758
+GitHub: github.com/raihan-codes LinkedIn: https://www.linkedin.com/in/raihan-molla
+Portfolio: my-portfolio.vercel.app
+
+EDUCATION
+B.Tech in Computer Science & Engineering (Data Science)
+Kazi Nazrul University, Asansol
+2024 – 2028
+Current GPA: 7.1
+
+TECHNICAL SKILLS
+Programming Languages: python,Java, C, C++,java script
+Core Computer Science: Data Structures & Algorithms, Object-Oriented Programming, DBMS
+Database: SQL, Database Management Systems
+
+PROJECTS
+• AI Notes Taker — Local-First Google Meet Notetaker
+GitHub: Repository | Live Demo: ai-notes-taker-bay.vercel.app
+- Built a local-first application to capture Google Meet audio and generate meeting notes.`;
+
+  const user2Resume = `PRIYA NAIR
+Kochi, Kerala • priya.nair@example.com • +91 94470 12345
+linkedin.com/in/priyanair-cloud • github.com/priyanair-dev
+
+EDUCATION
+Master of Science in Cloud Computing
+National Institute of Technology (NIT) Calicut
+2021 – 2023 | CGPA: 9.2
+
+TECHNICAL SKILLS
+Languages & Cloud: Go, Rust, AWS, Kubernetes, Docker, Terraform, Kafka, gRPC
+
+EXPERIENCE
+Cloud Infrastructure Engineer — Cisco Systems (2023 - Present)
+- Designed automated Kubernetes cluster orchestration on AWS using Terraform and Go.`;
+
+  const user1Extracted = (await ProfileExtractor.extractProfileFromText(user1Resume)).profile;
+  const user2Extracted = (await ProfileExtractor.extractProfileFromText(user2Resume)).profile;
+
+  assert(user1Extracted.fullName === 'Raihan Molla', 'User 1 profile extracted name: Raihan Molla');
+  assert(user2Extracted.fullName === 'Priya Nair', 'User 2 profile extracted name: Priya Nair');
+  assert(user1Extracted.email === 'raihanmolla9903@gmail.com', 'User 1 profile email is raihanmolla9903@gmail.com');
+  assert(user2Extracted.email === 'priya.nair@example.com', 'User 2 profile email is priya.nair@example.com');
+  assert(Boolean(user1Extracted.location?.toLowerCase().includes('asansol')), 'User 1 location is Asansol');
+  assert(Boolean(user2Extracted.location?.toLowerCase().includes('kochi')), 'User 2 location is Kochi');
+
+  const u1Skills = (user1Extracted.skills || []).map(s => s.name);
+  const u2Skills = (user2Extracted.skills || []).map(s => s.name);
+  assert(u1Skills.includes('Python') && !u1Skills.includes('Rust'), 'User 1 has Python, no Rust');
+  assert(u2Skills.includes('Rust') && u2Skills.includes('Kubernetes') && !u2Skills.includes('Python'), 'User 2 has Rust and Kubernetes, no Python');
+
+  // Verify dynamic job match separation
+  const pythonJob: NormalizedJobPosting = {
+    sourcePlatform: 'JOOBLE',
+    sourceJobId: 'py_data_1',
+    sourceUrl: 'https://jooble.org/py_data_1',
+    company: 'Alpha Data Labs',
+    title: 'Python Data Science Intern',
+    location: 'Remote',
+    isRemote: true,
+    remoteType: 'REMOTE',
+    employmentType: 'INTERNSHIP',
+    salaryCurrency: 'INR',
+    descriptionRaw: 'Hiring Python Data Science intern proficient in Python, SQL, and Data Structures.',
+    extractedSkills: ['Python', 'SQL', 'Data Structures & Algorithms'],
+    postedAt: new Date(Date.now() - 3600 * 1000 * 24 * 2),
+    updatedAt: new Date()
+  };
+
+  const cloudJob: NormalizedJobPosting = {
+    sourcePlatform: 'ADZUNA',
+    sourceJobId: 'cloud_infra_1',
+    sourceUrl: 'https://adzuna.com/cloud_1',
+    company: 'CloudScale Inc',
+    title: 'Kubernetes Platform Engineer',
+    location: 'Remote',
+    isRemote: true,
+    remoteType: 'REMOTE',
+    employmentType: 'FULL_TIME',
+    salaryCurrency: 'USD',
+    descriptionRaw: 'Senior Cloud Engineer experienced in Rust, Go, AWS, Docker, and Kubernetes.',
+    extractedSkills: ['Rust', 'Go (Golang)', 'AWS', 'Kubernetes', 'Docker'],
+    postedAt: new Date(Date.now() - 3600 * 1000 * 24 * 2),
+    updatedAt: new Date()
+  };
+
+  const u1PythonMatch = await JobMatcher.analyzeMatch(user1Extracted as CandidateProfileData, pythonJob);
+  const u2PythonMatch = await JobMatcher.analyzeMatch(user2Extracted as CandidateProfileData, pythonJob);
+
+  const u1CloudMatch = await JobMatcher.analyzeMatch(user1Extracted as CandidateProfileData, cloudJob);
+  const u2CloudMatch = await JobMatcher.analyzeMatch(user2Extracted as CandidateProfileData, cloudJob);
+
+  assert(u1PythonMatch.overallScore >= 65, 'User 1 has high match score for Python Data Science role');
+  assert(u2PythonMatch.overallScore <= 35, 'User 2 has low match score for Python role (lacks Python/DSA)');
+  assert(u1CloudMatch.overallScore <= 35, 'User 1 has low match score for Kubernetes role (lacks Rust/K8s)');
+  assert(u2CloudMatch.overallScore >= 65, 'User 2 has high match score for Kubernetes Platform role');
 
   console.log('\n====================================================');
   console.log(`🎯 Test Run Finished: ${passed} Passed, ${failed} Failed`);

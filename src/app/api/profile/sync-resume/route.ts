@@ -17,13 +17,13 @@ export async function GET(request: NextRequest) {
   }
 
   const masterResumeId = `resume_master_${userId}`;
-  let resume = db.resumes.find(r => r.userId === userId && (r.id === masterResumeId || r.company === 'Master Vault Resume'));
+  let resume = db.resumes.find(r => r.userId === userId && (r.id === masterResumeId || (r as any).company === 'Master Vault Resume'));
 
   const isMatched = Boolean(
     profile &&
     resume &&
-    profile.fullName === resume.content.candidateName &&
-    profile.email === resume.content.email
+    profile.fullName === (resume.content as any).candidateName &&
+    profile.email === (resume.content as any).email
   );
 
   return NextResponse.json({
@@ -48,45 +48,45 @@ export async function POST(request: NextRequest) {
   }
 
   const masterResumeId = `resume_master_${userId}`;
-  let resume = db.resumes.find(r => r.userId === userId && (r.id === masterResumeId || r.company === 'Master Vault Resume'));
+  let resume = db.resumes.find(r => r.userId === userId && (r.id === masterResumeId || (r as any).company === 'Master Vault Resume'));
 
   if (direction === 'RESUME_TO_PROFILE' && resume) {
     // Sync Candidate Profile from Master Resume
-    const rc = resume.content;
+    const rc = resume.content as any;
     const updatedProfile: any = {
       ...(profile || {}),
       id: `prof_${userId}`,
       userId,
       fullName: rc.candidateName || profile?.fullName || 'Raihan Molla',
-      email: rc.email || profile?.email || 'raihanmolla993@gmail.com',
-      phone: rc.phone || profile?.phone || '+1 (555) 389-4210',
-      location: rc.location || profile?.location || 'San Francisco, CA (PST)',
-      headline: rc.headline || profile?.headline || 'Principal Product Designer & Systems Architect',
+      email: rc.email || profile?.email || 'raihanmolla9903@gmail.com',
+      phone: rc.phone || profile?.phone || '+91 8585844758',
+      location: rc.location || profile?.location || 'Asansol, West Bengal, India',
+      headline: rc.headline || profile?.headline || 'B.Tech CSE (Data Science) Student & Software Developer',
       summary: rc.summary || profile?.summary || '',
       skills: (rc.skills || []).map((s: string, idx: number) => ({
         id: `skill_${idx}`,
         name: s,
         category: 'TECHNICAL',
-        years: 6,
-        level: 'EXPERT'
+        years: 2,
+        level: 'ADVANCED'
       })),
       experiences: (rc.experiences || []).map((exp: any, idx: number) => ({
         id: `exp_${idx}`,
         company: exp.company,
         role: exp.role,
-        startDate: (exp.duration || '').split('-')[0]?.trim() || '2021',
+        startDate: (exp.duration || '').split('-')[0]?.trim() || '2024',
         endDate: (exp.duration || '').split('-')[1]?.trim() || 'Present',
         isCurrent: (exp.duration || '').toLowerCase().includes('present'),
-        location: exp.location || 'San Francisco, CA',
+        location: exp.location || 'Remote',
         bullets: exp.bullets || []
       })),
       educations: (rc.educations || []).map((ed: any, idx: number) => ({
         id: `edu_${idx}`,
         institution: ed.institution,
         degree: ed.degree,
-        startDate: (ed.year || '').split('-')[0]?.trim() || '2014',
-        endDate: (ed.year || '').split('-')[1]?.trim() || '2018',
-        gradeGpa: ed.gpa || '3.8'
+        startDate: (ed.year || '').split('-')[0]?.trim() || '2024',
+        endDate: (ed.year || '').split('-')[1]?.trim() || '2028',
+        gradeGpa: ed.gpa || '7.1'
       })),
       projects: (rc.projects || []).map((p: any, idx: number) => ({
         id: `proj_${idx}`,
@@ -120,14 +120,14 @@ export async function POST(request: NextRequest) {
     const syncedMasterResume = {
       id: masterResumeId,
       userId,
-      targetRole: profile.desiredTitles?.[0] || profile.headline || 'Principal Product Designer',
+      targetRole: profile.desiredTitles?.[0] || profile.headline || 'Software Developer',
       company: 'Master Vault Resume',
       content: {
         candidateName: profile.fullName,
         email: profile.email,
         phone: profile.phone || '',
         location: profile.location || '',
-        headline: profile.headline || 'Principal Product Designer',
+        headline: profile.headline || 'Software Developer',
         summary: profile.summary || '',
         skills: profile.skills.map((s: any) => typeof s === 'string' ? s : s.name),
         experiences: profile.experiences.map((e: any) => ({
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString()
     };
 
-    const rIdx = db.resumes.findIndex(r => r.userId === userId && (r.id === masterResumeId || r.company === 'Master Vault Resume'));
+    const rIdx = db.resumes.findIndex(r => r.userId === userId && (r.id === masterResumeId || (r as any).company === 'Master Vault Resume'));
     if (rIdx >= 0) {
       db.resumes[rIdx] = syncedMasterResume as any;
     } else {
