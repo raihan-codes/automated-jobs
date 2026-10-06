@@ -1,18 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/firebase/AuthContext';
 import {
   Upload,
   FileText,
+  Inbox,
+  Check,
   CheckCircle2,
   Sparkles,
   ArrowRight,
   ShieldCheck,
-  Cpu,
-  Layers,
+  Compass,
   FileCheck,
   UserCheck
 } from 'lucide-react';
@@ -92,14 +93,26 @@ Razorpay Technologies — Software Development Engineer II (2022 - Present)
   }
 ];
 
+const PIPELINE_STEPS = [
+  { num: 1, title: 'Upload Resume' },
+  { num: 2, title: 'Read PDF/DOCX' },
+  { num: 3, title: 'AI / Resume Parser' },
+  { num: 4, title: 'Extract Details' },
+  { num: 5, title: 'Save Details' },
+  { num: 6, title: 'Auto-Fill Applications' },
+];
+
 export default function UploadResumePage() {
   const router = useRouter();
   const { user } = useAuth();
   const activeUserId = user?.uid || 'user_raihan_molla';
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [resumeText, setResumeText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [parsingStep, setParsingStep] = useState<number>(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [parsingStep, setParsingStep] = useState<number>(1);
+  const [currentFileName, setCurrentFileName] = useState<string>('');
   const [uploadQueue, setUploadQueue] = useState<any[]>([
     {
       name: 'Raihan_Molla_Resume.pdf',
@@ -118,10 +131,8 @@ export default function UploadResumePage() {
   ]);
   const [extractedData, setExtractedData] = useState<any>(null);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handleFileSelected = (file: File) => {
+    setCurrentFileName(file.name);
     const newQueueItem = {
       name: file.name,
       size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
@@ -190,12 +201,13 @@ export default function UploadResumePage() {
     } catch (e) {
       console.error(e);
     } finally {
-      setIsProcessing(false);
+      setTimeout(() => setIsProcessing(false), 1200);
     }
   };
 
   const processResume = async (rawText: string, filename?: string) => {
     setIsProcessing(true);
+    if (filename) setCurrentFileName(filename);
     setParsingStep(1);
 
     setTimeout(() => setParsingStep(2), 400);
@@ -232,115 +244,134 @@ export default function UploadResumePage() {
     } catch (e) {
       console.error(e);
     } finally {
-      setIsProcessing(false);
+      setTimeout(() => setIsProcessing(false), 1200);
     }
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto w-full pb-16" data-purpose="upload-section">
-      {/* 1. Section Heading Banner (Stitch Screen 6) */}
-      <div className="text-center max-w-3xl mx-auto pt-2 pb-1 space-y-2">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold border border-emerald-200 dark:border-emerald-800">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Automated Resume Processing &amp; Sensitive Field Gate</span>
-        </span>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+    <div className="space-y-8 max-w-6xl mx-auto w-full pt-4 sm:pt-6 pb-20" data-purpose="upload-section">
+      {/* 1. Page Header (Matching Reference Screenshot) */}
+      <div className="text-center max-w-3xl mx-auto px-4">
+        <h1 className="text-3xl sm:text-4xl md:text-[40px] font-extrabold text-[#0f172a] dark:text-white tracking-tight leading-tight">
           AI Resume Extractor &amp; Application Auto-Fill
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl mx-auto">
+        <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl mx-auto mt-3 sm:mt-4 font-normal">
           Upload your resume in PDF or DOCX format. The parser extracts profile entities, saves them to your Candidate Profile, and auto-fills application forms with sensitive fields safety checkpoints.
         </p>
       </div>
 
-      {/* 2. Pipeline Stepper Tracker Card (Stitch Screen 6) */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs">
-        <div className="flex items-center justify-between mb-6 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <h3 className="text-xs font-bold text-slate-900 dark:text-white tracking-wider uppercase">
-              End-to-End Extraction &amp; Auto-Fill Pipeline
-            </h3>
-          </div>
-          <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
-            <ShieldCheck className="w-4 h-4" />
-            <span>Sensitive Fields Protected</span>
-          </span>
+      {/* 2. End-to-End Extraction & Auto-Fill Pipeline (Matching Reference Screenshot) */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-7 shadow-xs">
+        <div className="flex items-center gap-2.5 mb-5">
+          <Inbox className="w-4 h-4 text-indigo-600 dark:text-indigo-400 stroke-[2.2]" />
+          <h2 className="text-xs font-bold text-slate-900 dark:text-white tracking-wider uppercase">
+            END-TO-END EXTRACTION &amp; AUTO-FILL PIPELINE
+          </h2>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { num: 1, title: 'Upload Resume', sub: 'Drag & Drop PDF or DOCX' },
-            { num: 2, title: 'Read PDF/DOCX', sub: 'Binary layer & text buffer' },
-            { num: 3, title: 'AI / Resume Parser', sub: 'Semantic entity extraction' },
-            { num: 4, title: 'Extract Details', sub: 'Name, Skills, Roles, Links' },
-            { num: 5, title: 'Save Candidate Profile', sub: 'Persistent master ground truth' },
-            { num: 6, title: 'Auto-Fill Applications', sub: 'Sensitive fields safety gate' },
-          ].map((step) => {
-            const isActive = parsingStep >= step.num || (!isProcessing && step.num === 1);
-            const isCompleted = parsingStep > step.num;
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-3.5">
+          {PIPELINE_STEPS.map((step) => {
+            const isActive = isProcessing ? parsingStep === step.num : step.num === 1;
+            const isCompleted = isProcessing ? parsingStep > step.num : (extractedData && step.num <= 6);
+
             return (
               <div
                 key={step.num}
-                className={`relative flex flex-col p-3 rounded-xl border min-h-[76px] transition-all ${
+                className={`rounded-xl border p-3.5 sm:p-4 flex flex-col justify-between transition-all ${
                   isActive
-                    ? 'border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/40'
-                    : 'border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40'
+                    ? 'border-indigo-500/90 dark:border-indigo-500 bg-white dark:bg-slate-900 shadow-xs ring-1 ring-indigo-500/10'
+                    : isCompleted
+                    ? 'border-emerald-500/80 dark:border-emerald-600 bg-white dark:bg-slate-900'
+                    : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60'
                 }`}
               >
-                <div className="flex items-start gap-2 mb-1.5">
+                <div className="flex items-center gap-2.5 sm:gap-3">
                   <span
-                    className={`w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5 ${
+                    className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0 transition-colors ${
                       isActive
                         ? 'bg-indigo-600 text-white'
-                        : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                        : isCompleted
+                        ? 'bg-emerald-600 text-white'
+                        : 'border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 bg-transparent'
                     }`}
                   >
-                    {isCompleted ? '✓' : step.num}
+                    {isCompleted ? <Check className="w-3.5 h-3.5 stroke-[2.5]" /> : step.num}
                   </span>
-                  <div>
-                    <span className={`text-xs leading-tight block font-semibold ${isActive ? 'text-indigo-950 dark:text-indigo-200' : 'text-slate-700 dark:text-slate-300'}`}>
-                      {step.title}
-                    </span>
-                    <span className="text-[10px] text-slate-400 block leading-tight mt-0.5">
-                      {step.sub}
-                    </span>
-                  </div>
+                  <span
+                    className={`text-xs leading-snug transition-colors ${
+                      isActive
+                        ? 'text-slate-900 dark:text-white font-bold'
+                        : isCompleted
+                        ? 'text-slate-900 dark:text-white font-semibold'
+                        : 'text-slate-700 dark:text-slate-300 font-medium'
+                    }`}
+                  >
+                    {step.title}
+                  </span>
                 </div>
-                <div className={`h-1 w-full rounded-full mt-auto ${isActive ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-800'}`} />
+                <div
+                  className={`h-1 w-full rounded-full mt-3.5 transition-all ${
+                    isActive
+                      ? 'bg-indigo-600'
+                      : isCompleted
+                      ? 'bg-emerald-500'
+                      : 'bg-slate-200 dark:bg-slate-800'
+                  }`}
+                />
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* 3. Drag and Drop Resume Box (Stitch Screen 6) */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors p-10 sm:p-14 text-center shadow-xs">
-        <div className="w-16 h-16 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4">
-          <Upload className="w-8 h-8" />
+      {/* 3. Drag and Drop Resume Dropzone (Matching Reference Screenshot) */}
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          const file = e.dataTransfer.files?.[0];
+          if (file) handleFileSelected(file);
+        }}
+        className={`bg-white/60 dark:bg-slate-900/40 rounded-2xl sm:rounded-3xl border-2 border-dashed transition-all p-12 sm:p-20 text-center relative ${
+          isDragging
+            ? 'border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/20 scale-[1.002]'
+            : 'border-slate-200/90 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500'
+        }`}
+      >
+        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#eff2fe] dark:bg-indigo-950/60 text-[#4f46e5] dark:text-indigo-400 flex items-center justify-center mx-auto mb-6 shadow-xs">
+          <Upload className="w-8 h-8 sm:w-9 sm:h-9 stroke-[2.2]" />
         </div>
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+
+        <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-6 tracking-tight">
           Upload your Resume (PDF, DOCX, DOC, TXT)
         </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-6">
-          Native binary PDF text layer parsing, Word .docx/.doc, and text documents supported. Zero data hallucination guarantee.
-        </p>
 
         <input
+          ref={fileInputRef}
           accept=".pdf,.doc,.docx,.txt"
           className="hidden"
           id="resumeFileInput"
-          onChange={handleFileUpload}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFileSelected(file);
+          }}
           type="file"
         />
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <button
             type="button"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-md shadow-indigo-200 dark:shadow-none transition-all cursor-pointer"
-            onClick={() => document.getElementById('resumeFileInput')?.click()}
+            disabled={isProcessing}
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] active:scale-[0.98] text-white font-medium text-sm shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all cursor-pointer disabled:opacity-75"
           >
             <FileText className="w-4 h-4" />
-            <span>Choose Resume File (.pdf / .docx / .doc / .txt)</span>
+            <span>{isProcessing ? 'Processing Resume...' : 'Choose Resume File'}</span>
           </button>
         </div>
 
@@ -351,11 +382,12 @@ export default function UploadResumePage() {
             <button
               key={idx}
               type="button"
+              disabled={isProcessing}
               onClick={() => {
                 setResumeText(sample.text);
                 processResume(sample.text, `${sample.title.split(' ')[0]}_Sample_Resume.pdf`);
               }}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              className="px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer shadow-2xs disabled:opacity-60"
             >
               {sample.title.split('(')[0]} ({sample.type})
             </button>
@@ -363,60 +395,116 @@ export default function UploadResumePage() {
         </div>
       </div>
 
-      {/* 4. Extracted Profile Summary Card (if available) */}
-      {extractedData && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-emerald-200 dark:border-emerald-800 p-6 shadow-xs space-y-4 animate-in fade-in duration-300">
-          <div className="flex items-center justify-between border-b border-emerald-100 dark:border-emerald-900/60 pb-3">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Entities Successfully Extracted &amp; Saved to Ground Truth
-              </h3>
+      {/* 4. Processing Status Indicator Banner (When active) */}
+      {isProcessing && (
+        <div className="bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 rounded-2xl p-4 sm:p-5 flex items-center justify-between animate-in fade-in duration-200">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-indigo-600 animate-ping"></div>
+            <div>
+              <p className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
+                Parsing {currentFileName || 'uploaded document'}...
+              </p>
+              <p className="text-[11px] text-indigo-600 dark:text-indigo-400">
+                Step {parsingStep} of 6: {PIPELINE_STEPS[parsingStep - 1]?.title || 'Processing'}
+              </p>
             </div>
-            <Link
-              href="/profile"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-2xs transition-colors"
-            >
-              <span>View Candidate Profile</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+          </div>
+          <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+            {Math.round((parsingStep / 6) * 100)}%
+          </span>
+        </div>
+      )}
+
+      {/* 5. Extracted Profile Summary Card (if available) */}
+      {extractedData && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-emerald-200 dark:border-emerald-800 p-6 sm:p-7 shadow-xs space-y-5 animate-in fade-in duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-100 dark:border-emerald-900/60 pb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Entities Successfully Extracted &amp; Saved to Ground Truth
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Candidate profile and job matching parameters have been dynamically updated.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/profile"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors"
+              >
+                <span>View Candidate Profile</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              <Link
+                href="/jobs"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-colors"
+              >
+                <Compass className="w-3.5 h-3.5 text-slate-500" />
+                <span>Job Matches</span>
+              </Link>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-              <span className="text-slate-400 block font-medium">Candidate Name</span>
-              <span className="font-bold text-slate-900 dark:text-white text-sm">{extractedData.fullName || 'Raihan Molla'}</span>
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
+              <span className="text-slate-400 block font-medium text-[11px] uppercase tracking-wider mb-1">Candidate Contact</span>
+              <span className="font-bold text-slate-900 dark:text-white text-sm block">{extractedData.fullName || 'Raihan Molla'}</span>
               <span className="text-slate-500 dark:text-slate-400 block mt-1">{extractedData.email || 'raihanmolla9903@gmail.com'}</span>
+              {extractedData.phone && (
+                <span className="text-slate-500 dark:text-slate-400 block mt-0.5">{extractedData.phone}</span>
+              )}
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-              <span className="text-slate-400 block font-medium">Headline &amp; Target Role</span>
-              <span className="font-bold text-slate-900 dark:text-white text-sm">{extractedData.headline || 'B.Tech CSE (Data Science) Student & Software Developer'}</span>
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
+              <span className="text-slate-400 block font-medium text-[11px] uppercase tracking-wider mb-1">Target Role &amp; Location</span>
+              <span className="font-bold text-slate-900 dark:text-white text-sm block">{extractedData.headline || 'B.Tech CSE (Data Science) Student'}</span>
               <span className="text-slate-500 dark:text-slate-400 block mt-1">{extractedData.location || 'Asansol, West Bengal, India'}</span>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-              <span className="text-slate-400 block font-medium">Skills Extracted</span>
-              <span className="font-bold text-slate-900 dark:text-white text-sm">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
+              <span className="text-slate-400 block font-medium text-[11px] uppercase tracking-wider mb-1">Extracted Technical Skills</span>
+              <span className="font-bold text-slate-900 dark:text-white text-sm block">
                 {(extractedData.skills || []).length || 8} Verified Skills
               </span>
-              <span className="text-emerald-600 font-semibold block mt-1">100% Match Ground Truth</span>
+              <div className="flex flex-wrap gap-1 mt-2">
+                {(extractedData.skills || []).slice(0, 6).map((skill: any, sIdx: number) => {
+                  const skillName = typeof skill === 'string' ? skill : skill.name;
+                  return (
+                    <span
+                      key={sIdx}
+                      className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold text-[10px] border border-indigo-100 dark:border-indigo-900"
+                    >
+                      {skillName}
+                    </span>
+                  );
+                })}
+                {(extractedData.skills || []).length > 6 && (
+                  <span className="text-[10px] text-slate-400 self-center">
+                    +{(extractedData.skills || []).length - 6} more
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 5. Recent Upload Queue */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+      {/* 6. Recent Upload Queue Vault */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-7 shadow-xs space-y-4">
+        <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <FileCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             <h4 className="text-xs font-bold text-slate-900 dark:text-white tracking-wider uppercase">
               Recent Ingestion Vault &amp; Documents
             </h4>
           </div>
-          <span className="text-xs text-slate-400">{uploadQueue.length} Documents Synced</span>
+          <span className="text-xs text-slate-400 font-medium">{uploadQueue.length} Documents Synced</span>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {uploadQueue.map((item, idx) => (
             <div
               key={idx}

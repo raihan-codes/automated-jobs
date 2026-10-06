@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/firebase/AuthContext';
 import {
   FileText,
+  Upload,
   Printer,
   Sparkles,
   CheckCircle2,
@@ -122,13 +123,22 @@ function ResumeStudioContent() {
             Every bullet point, skill, and metric is strictly validated against your verified master profile to ensure zero hallucinations.
           </p>
         </div>
-        <button
-          onClick={handlePrint}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs shadow-2xs transition-all self-start sm:self-auto cursor-pointer"
-        >
-          <Printer className="w-4 h-4" />
-          <span>Print / PDF Export</span>
-        </button>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <Link
+            href="/upload"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-600 dark:text-indigo-400 font-semibold text-xs border border-indigo-200/80 dark:border-indigo-800 transition-all cursor-pointer"
+          >
+            <Upload className="w-4 h-4" />
+            <span>Upload Resume</span>
+          </Link>
+          <button
+            onClick={handlePrint}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs shadow-2xs transition-all cursor-pointer"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Print / PDF Export</span>
+          </button>
+        </div>
       </div>
 
       {/* 2. Main Content View: Either Empty State or Tailored Resume Preview (Stitch Screen 1) */}
@@ -142,14 +152,23 @@ function ResumeStudioContent() {
             No tailored resumes generated yet
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-6">
-            Select any discovered job and click &quot;Tailor Resume &amp; Apply&quot;.
+            Upload your master resume or select any discovered job to auto-tailor your application resume.
           </p>
-          <Link
-            href="/jobs"
-            className="inline-flex px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-xs hover:bg-indigo-700 shadow-sm transition cursor-pointer"
-          >
-            Discover Open Jobs
-          </Link>
+          <div className="flex items-center justify-center gap-3">
+            <Link
+              href="/upload"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-xs hover:bg-indigo-700 shadow-sm transition cursor-pointer"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Upload &amp; Extract Resume</span>
+            </Link>
+            <Link
+              href="/jobs"
+              className="inline-flex px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+            >
+              Discover Open Jobs
+            </Link>
+          </div>
         </div>
       ) : (
         /* Active Tailored Resume View */
