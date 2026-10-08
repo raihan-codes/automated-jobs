@@ -4,11 +4,12 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/firebase/AuthContext';
+import { Settings } from 'lucide-react';
 
 const navItems = [
   {
     label: 'Overview',
-    href: '/overview',
+    href: '/',
     iconPath: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z',
   },
   {
@@ -55,7 +56,7 @@ export function Sidebar() {
       {/* Top Brand & Navigation */}
       <div className="flex flex-col h-full overflow-y-auto">
         {/* Logo Area */}
-        <Link href="/overview" className="p-5 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
+        <Link href="/" className="p-5 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-indigo-100 dark:shadow-none shrink-0">
             {/* Robot Logo Icon */}
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,10 +83,10 @@ export function Sidebar() {
         <nav className="p-3 space-y-1 text-sm font-medium" data-purpose="main-nav">
           {navItems.map((item) => {
             const isActive =
-              pathname === item.href ||
-              (item.href !== '/overview' &&
-                pathname.startsWith(item.href) &&
-                (item.href !== '/resumes' || pathname === '/resumes'));
+              item.href === '/'
+                ? pathname === '/' || pathname === '/overview'
+                : (pathname.startsWith(item.href) &&
+                   (item.href !== '/resumes' || pathname === '/resumes'));
 
             return (
               <Link
@@ -113,11 +114,25 @@ export function Sidebar() {
       </div>
 
       {/* Bottom Sidebar Footer */}
-      <div className="p-3 border-t border-slate-100 dark:border-slate-800 space-y-2 bg-slate-50/50 dark:bg-slate-900/50" data-purpose="sidebar-footer">
-        <div className="flex items-center gap-2 text-xs px-2 py-1.5 text-slate-500 dark:text-slate-400 font-medium">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Match Engine Active</span>
-        </div>
+      <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50" data-purpose="sidebar-footer">
+        <Link
+          href="/settings"
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium group ${
+            pathname === '/settings'
+              ? 'bg-indigo-600 text-white font-semibold shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
+          }`}
+          title="Settings"
+        >
+          <Settings
+            className={`w-4 h-4 shrink-0 transition-transform duration-300 group-hover:rotate-45 ${
+              pathname === '/settings'
+                ? 'text-white'
+                : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200'
+            }`}
+          />
+          <span className="truncate">Settings</span>
+        </Link>
       </div>
     </aside>
   );

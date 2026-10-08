@@ -17,17 +17,19 @@ import {
   FileText,
   Target,
   UserCircle2,
-  ShieldCheck
+  ShieldCheck,
+  Settings
 } from 'lucide-react';
 
 const mobileNavItems = [
-  { label: 'Overview', href: '/overview', icon: LayoutDashboard },
+  { label: 'Overview', href: '/', icon: LayoutDashboard },
   { label: 'Upload Resume', href: '/upload', icon: Upload },
   { label: 'Job Discovery & Match', href: '/jobs', icon: Compass },
   { label: 'Application Pipeline', href: '/applications', icon: FileCheck2 },
   { label: 'Resume Studio', href: '/resumes', icon: FileText },
   { label: 'Resume Review & Jobs', href: '/resumes/review', icon: Target },
   { label: 'Candidate Profile', href: '/profile', icon: UserCircle2 },
+  { label: 'Settings', href: '/settings', icon: Settings },
 ];
 
 export function DashboardNavbar() {
@@ -67,7 +69,7 @@ export function DashboardNavbar() {
   return (
     <>
       <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-8 flex items-center justify-between sticky top-0 z-20" data-purpose="top-navigation">
-        {/* Left items: Mobile Hamburger + Live ATS Feed Indicator */}
+        {/* Left items: Mobile Hamburger */}
         <div className="flex items-center gap-3 md:gap-4">
           <button
             onClick={() => setMobileMenuOpen(true)}
@@ -76,22 +78,6 @@ export function DashboardNavbar() {
           >
             <Menu className="w-5 h-5" />
           </button>
-
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200 dark:border-emerald-800">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>4 ATS Feeds Ingesting</span>
-          </div>
-
-          <div className="hidden xl:flex items-center gap-2 text-xs text-slate-400 font-medium">
-            <span>•</span>
-            <span className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-default">Greenhouse</span>
-            <span>•</span>
-            <span className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-default">Lever</span>
-            <span>•</span>
-            <span className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-default">Ashby</span>
-            <span>•</span>
-            <span className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-default">Workable</span>
-          </div>
         </div>
 
         {/* Right items: Actions & Profile */}
@@ -106,6 +92,14 @@ export function DashboardNavbar() {
           <ThemeToggle variant="pill" />
 
           <NotificationDropdown />
+
+          <Link
+            href="/settings"
+            title="Settings & Preferences"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+          </Link>
 
           {/* User Capsule */}
           <Link
@@ -147,7 +141,7 @@ export function DashboardNavbar() {
             <div>
               <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-4">
                 <Link
-                  href="/overview"
+                  href="/"
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-2.5"
                 >
@@ -171,7 +165,11 @@ export function DashboardNavbar() {
 
               <nav className="space-y-1">
                 {mobileNavItems.map(item => {
-                  const isActive = pathname === item.href || (item.href !== '/overview' && pathname.startsWith(item.href));
+                  const isActive =
+                    item.href === '/'
+                      ? pathname === '/' || pathname === '/overview'
+                      : (pathname.startsWith(item.href) &&
+                         (item.href !== '/resumes' || pathname === '/resumes'));
                   const Icon = item.icon;
                   return (
                     <Link

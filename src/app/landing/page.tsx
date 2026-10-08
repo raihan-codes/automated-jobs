@@ -3,6 +3,6 @@
 import React from 'react';
 import App from '@/App';
 
-export default function Page() {
+export default function LandingPage() {
   return <App />;
 }
